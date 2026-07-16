@@ -1,0 +1,59 @@
+# Android
+*.apk
+*.ap_
+*.dex
+*.class
+*.log
+*.hprof
+/.gradle
+/captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+build/
+release/
+
+# IDE
+/.idea
+/.settings
+.project
+.classpath
+*.iml
+*.iws
+*.ipr
+/out/
+/workspace.xml
+/tasks.xml
+/usage.statistics.xml
+/dictionaries/
+/shelf/
+/codeStyleSchemes/
+/inspectionProfiles/
+/modules.xml
+/vcs.xml
+/runConfigurations/
+/resourceHashesCache.xml
+/resourceHashesCache.txt
+/artifacts/
+/compiler.xml
+/encodings.xml
+/misc.xml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Gradle
+gradle-wrapper.jar
+.gradletasknamecache
+/gradlew
+/gradlew.bat
+/gradle/
+/gradlew.bat
+
+# Keystore
+*.jks
+*.keystore
+*.p12
+*.pem

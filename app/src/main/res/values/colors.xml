@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- User bubble: DeepSeek blue/purple accent -->
+    <color name="user_bubble">#4D49FC</color>
+    <color name="user_text">#FFFFFF</color>
+
+    <!-- AI bubble: white / light -->
+    <color name="ai_bubble">#FFFFFF</color>
+    <color name="ai_text">#1A1A1A</color>
+
+    <!-- Launcher icon background -->
+    <color name="ic_launcher_background">#4D49FC</color>
+</resources>

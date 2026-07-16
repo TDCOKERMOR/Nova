@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>AI Chat</title>
+<link rel="stylesheet" href="chat.css">
+</head>
+<body>
+<div id="app">
+  <!-- Sidebar overlay (portrait) -->
+  <div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+  <!-- Sidebar -->
+  <div id="sidebar" class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">对话历史</span>
+      <button class="icon-btn" onclick="newChat()" title="新对话">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
+    <div class="search-box">
+      <input id="searchInput" type="text" placeholder="搜索对话..." oninput="onSearch(this.value)">
+    </div>
+    <div id="convList" class="conv-list"></div>
+  </div>
+
+  <!-- Main -->
+  <div id="main" class="main">
+    <!-- Top bar -->
+    <div class="topbar">
+      <button class="icon-btn" id="btnSidebar" onclick="toggleSidebar()" title="侧边栏">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
+      <span class="topbar-title">Nova</span>
+      <button class="icon-btn" onclick="native.openSettings()" title="设置">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+
+    <!-- Config hint -->
+    <div id="configHint" class="config-hint" style="display:none">请先配置 API — 点击右上角设置</div>
+
+    <!-- Messages -->
+    <div id="msgList" class="msg-list"></div>
+
+    <!-- Attachment preview -->
+    <div id="attachPreview" class="attach-preview" style="display:none">
+      <img id="attachImg" src="" alt="附件">
+      <button class="icon-btn sm" onclick="clearAttachment()" title="清除">✕</button>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="input-box">
+        <button class="icon-btn" onclick="native.pickImage()" title="上传图片">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+        </button>
+        <button class="icon-btn" onclick="openOptimize()" title="优化提示词">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <textarea id="msgInput" rows="1" placeholder="输入消息 或 /生图 描述" onkeydown="onInputKey(event)"></textarea>
+        <button class="send-btn" id="btnSend" onclick="sendMsg()" title="发送">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Optimize dialog -->
+<div id="optimizeOverlay" class="overlay" onclick="closeOptimize()"></div>
+<div id="optimizeDialog" class="dialog">
+  <div class="dialog-title">提示词优化</div>
+  <textarea id="optPrompt" placeholder="输入你的想法" rows="3"></textarea>
+  <div class="opt-row">
+    <input id="optStyle" placeholder="风格（如写实、漫画）">
+    <input id="optSize" placeholder="尺寸（如1024x1024）">
+  </div>
+  <button class="btn primary" id="optBtn" onclick="doOptimize()">优化提示词</button>
+  <div id="optLoading" class="loading" style="display:none"></div>
+  <div id="optResult" class="dialog-result" style="display:none">
+    <div class="result-label">优化结果</div>
+    <div id="optResultText" class="result-text"></div>
+    <div class="opt-actions">
+      <button class="btn outline" onclick="closeOptimize()">取消</button>
+      <button class="btn tonal" onclick="doOptimize()">重新生成</button>
+      <button class="btn primary" onclick="confirmOptimize()">确认</button>
+    </div>
+  </div>
+</div>
+
+<script src="chat.js"></script>
+
+<!-- Context menu -->
+<div id="ctxMenu" class="ctx-menu" style="display:none">
+  <div class="ctx-item" id="ctxPin" onclick="ctxPin()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="5 12 12 5 19 12"/></svg>
+    <span>置顶</span>
+  </div>
+  <div class="ctx-item" onclick="ctxRename()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    重命名
+  </div>
+  <div class="ctx-item danger" onclick="ctxDelete()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    删除
+  </div>
+</div>
+</body>
+</html>

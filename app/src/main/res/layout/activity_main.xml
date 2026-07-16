@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.drawerlayout.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawerLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="false">
+
+    <!-- Main content -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="#F5F5F7">
+
+        <!-- Top bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:paddingHorizontal="12dp"
+            android:orientation="horizontal"
+            android:background="@android:color/white"
+            android:elevation="1dp">
+
+            <ImageButton
+                android:id="@+id/btnDrawer"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@android:drawable/ic_menu_more"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="fitCenter"
+                android:padding="6dp"
+                android:contentDescription="侧边栏" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="AI Chat"
+                android:textSize="17sp"
+                android:textStyle="bold"
+                android:textColor="#1A1A1A" />
+
+            <ImageButton
+                android:id="@+id/btnSettings"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@android:drawable/ic_menu_preferences"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:scaleType="fitCenter"
+                android:padding="6dp"
+                android:contentDescription="设置" />
+        </LinearLayout>
+
+        <!-- Config hint -->
+        <TextView
+            android:id="@+id/tvConfigHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="请先配置 API"
+            android:padding="8dp"
+            android:textSize="13sp"
+            android:textColor="#B71C1C"
+            android:gravity="center"
+            android:visibility="gone"
+            android:background="#FFEBEE" />
+
+        <!-- Chat list -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
+            android:clipToPadding="false" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_gravity="center"
+            android:indeterminate="true"
+            android:visibility="gone"
+            android:layout_marginVertical="4dp" />
+
+        <TextView
+            android:id="@+id/tvModelInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="11sp"
+            android:textColor="#999"
+            android:gravity="center"
+            android:paddingBottom="6dp" />
+
+        <!-- Attachment preview -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingBottom="4dp"
+            android:gravity="center_vertical"
+            android:background="#F5F5F7">
+
+            <ImageView
+                android:id="@+id/ivAttachPreview"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                android:contentDescription="附件预览"
+                android:background="@drawable/input_bg" />
+
+            <Button
+                android:id="@+id/btnClearAttach"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:text="\u2715"
+                android:textSize="11sp"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:minWidth="0dp"
+                android:paddingHorizontal="0dp"
+                android:visibility="gone" />
+        </LinearLayout>
+
+        <!-- Input area -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="10dp"
+            android:gravity="center_vertical"
+            android:background="#F5F5F7">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/input_bg_deepseek"
+                android:paddingHorizontal="6dp">
+
+                <ImageButton
+                    android:id="@+id/btnAttach"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@android:drawable/ic_input_add"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:scaleType="fitCenter"
+                    android:padding="6dp"
+                    android:contentDescription="附件" />
+
+                <ImageButton
+                    android:id="@+id/btnOptimize"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@android:drawable/ic_menu_edit"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:scaleType="fitCenter"
+                    android:padding="6dp"
+                    android:contentDescription="优化提示词" />
+
+                <EditText
+                    android:id="@+id/etInput"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="输入消息 或 /生图 描述"
+                    android:background="@null"
+                    android:maxLines="5"
+                    android:textSize="15sp"
+                    android:textColor="#1A1A1A"
+                    android:textColorHint="#BBB"
+                    android:paddingVertical="8dp"
+                    android:paddingHorizontal="4dp"
+                    android:inputType="textMultiLine" />
+
+                <ImageButton
+                    android:id="@+id/btnSend"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:src="@android:drawable/ic_menu_send"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:scaleType="fitCenter"
+                    android:padding="6dp"
+                    android:contentDescription="发送" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Sidebar drawer (inflated in code) -->
+    <FrameLayout
+        android:id="@+id/sidebarContainer"
+        android:layout_width="280dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="start" />
+
+</androidx.drawerlayout.widget.DrawerLayout>
