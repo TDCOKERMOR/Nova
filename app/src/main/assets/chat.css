@@ -121,9 +121,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow:hid
 .send-btn{
   width:36px;height:36px;border:none;background:var(--accent);color:#fff;
   border-radius:50%;display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;transition:all .15s;opacity:.4;cursor:default
+  flex-shrink:0;transition:all .15s;opacity:.4;cursor:pointer
 }
-.send-btn.active{opacity:1;cursor:pointer}
+.send-btn.active{opacity:1}
 .send-btn.active:active{transform:scale(.92)}
 
 /* Attachments */

@@ -73,38 +73,39 @@ function onChatStreamEnd(msgId) {
   if (!bubble) return;
   bubble.innerHTML = bubble.innerHTML.replace('<span class="stream-cursor">|</span>', '');
 
-  // Close reasoning block if open
+  // Close reasoning block if still open
   var details = bubble.querySelector('details[open]');
   if (details) details.open = false;
 
-  var text = bubble.textContent;
-  Nova.state.messages.push({ role: 'assistant', content: text });
+  // Extract main content (excluding thinking block) for message storage
+  var mainText = extractMainText(bubble);
+  Nova.state.messages.push({ role: 'assistant', content: mainText });
   native.updateMessages(JSON.stringify(Nova.state.messages));
   wrap.id = '';
 
-  // Re-render markdown on final content
-  var rawContent = bubble.innerHTML;
-  // Only render markdown on the content part, preserve thinking blocks
+  // Re-render markdown on the final content, preserving thinking block
   var thinkingBlock = bubble.querySelector('.thinking-block');
   if (thinkingBlock) {
-    // Keep thinking block as-is, markdown-render the rest
-    var afterThinking = '';
-    var sibling = thinkingBlock.nextSibling;
-    while (sibling) {
-      if (sibling.nodeType === 3) afterThinking += sibling.textContent;
-      else if (sibling.nodeType === 1) afterThinking += sibling.textContent;
-      sibling = sibling.nextSibling;
-    }
-    // Remove text after thinking block
+    // Remove all siblings after thinking block, then append markdown-rendered content
     while (thinkingBlock.nextSibling) {
       thinkingBlock.nextSibling.remove();
     }
-    var mdDiv = document.createElement('div');
-    mdDiv.innerHTML = renderContent(afterThinking.trim());
-    bubble.appendChild(mdDiv);
+    if (mainText) {
+      var mdDiv = document.createElement('div');
+      mdDiv.innerHTML = renderContent(mainText);
+      bubble.appendChild(mdDiv);
+    }
   } else {
-    bubble.innerHTML = renderContent(text);
+    bubble.innerHTML = renderContent(mainText);
   }
+}
+
+/** Extract plain text from a bubble, skipping thinking-block content */
+function extractMainText(bubble) {
+  var clone = bubble.cloneNode(true);
+  var thinking = clone.querySelector('.thinking-block');
+  if (thinking) thinking.remove();
+  return clone.textContent.trim();
 }
 
 function onChatStreamError(msgId, err) {

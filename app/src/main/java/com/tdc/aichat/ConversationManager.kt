@@ -2,13 +2,31 @@ package com.tdc.aichat
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
 class ConversationManager(context: Context) {
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences("conversations", Context.MODE_PRIVATE)
     private val gson = Gson()
+
+    // Encrypted storage for conversation data (v5.5+)
+    private val securePrefs: SharedPreferences by lazy {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            context,
+            "nova_conversations_enc",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
+    // Legacy plaintext prefs (for one-time migration from v5.4-)
+    private val legacyPrefs: SharedPreferences =
+        context.getSharedPreferences("conversations", Context.MODE_PRIVATE)
 
     private var conversations: MutableList<Conversation> = mutableListOf()
     var currentId: String = ""
@@ -91,12 +109,26 @@ class ConversationManager(context: Context) {
 
     fun save() {
         val json = gson.toJson(conversations)
-        prefs.edit().putString("conv_list", json).apply()
+        securePrefs.edit().putString("conv_list", json).apply()
     }
 
     private fun load() {
         try {
-            val json = prefs.getString("conv_list", null)
+            // Try encrypted storage first
+            var json = securePrefs.getString("conv_list", null)
+
+            // One-time migration from legacy plaintext storage
+            if (json == null) {
+                val legacyJson = legacyPrefs.getString("conv_list", null)
+                if (legacyJson != null) {
+                    json = legacyJson
+                    // Migrate to encrypted storage
+                    securePrefs.edit().putString("conv_list", legacyJson).apply()
+                    // Clear legacy storage after successful migration
+                    legacyPrefs.edit().clear().apply()
+                }
+            }
+
             if (json != null) {
                 val type = object : TypeToken<MutableList<Conversation>>() {}.type
                 conversations = gson.fromJson(json, type) ?: mutableListOf()
@@ -108,7 +140,7 @@ class ConversationManager(context: Context) {
         } catch (e: Exception) {
             // Corrupted data — start fresh
             conversations = mutableListOf()
-            prefs.edit().remove("conv_list").apply()
+            securePrefs.edit().remove("conv_list").apply()
         }
         // Ensure at least one conversation exists and currentId is valid
         if (conversations.isEmpty()) {

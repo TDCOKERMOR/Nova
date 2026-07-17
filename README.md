@@ -119,6 +119,7 @@ TDCOKERMOR
 
 ## 版本历史
 
+- **v5.5** (2026-07-17)：安全增强（对话数据迁移至 EncryptedSharedPreferences 加密存储，旧数据自动迁移）、SettingsActivity API Key 脱敏完善（失焦自动重新脱敏）、ApiClient URL 构建健壮性修复（尾部斜杠容错）、非流式请求补全模型参数（temperature/topP/maxTokens）、ProGuard 规则修正（SendMsgData/JsMessage 跟随 v5.4 架构变更）、JS 端清理遗留死代码 + 流结束 Markdown 渲染重构（避免思维链文本混入消息内容）、send-btn 无障碍光标修正
 - **v5.4** (2026-07-17)：架构重构（JsBridge 拆分为 ChatBridgeHandler + ImageBridgeHandler）、ApiClient 流处理优化（BatchFlusher 提取+指数退避重试）、全文对话搜索（搜索消息内容）、DOM 增量更新（消息列表性能优化）、CSS 增强（表格样式/滚动条美化/暗色模式完善）、依赖版本升级
 - **v5.3** (2026-07-17)：修复 ProGuard 规则致命 Bug（release 构建数据模型被混淆导致崩溃）、参数输入校验（temperature/topP/maxTokens）、JsBridge Job 竞态修复、ConversationManager 健壮性增强、前端资源加载优化
 - **v5.2** (2026-07-17)：思维链显示（DeepSeek-R1 reasoning_content）、消息复制按钮、本地化 CDN 资源、ProGuard 规则完善、ConfigManager 移除明文回退、错误信息中文化优化

@@ -58,7 +58,7 @@ data class AppConfig(
     val topP: Float = 1.0f,
     val maxTokens: Int = 2048
 ) {
-    /** Effective image API URL: if blank, uses chat URL + /v1/images/generations */
+    /** Effective image API URL: if blank, derives from chat URL + /v1/images/generations */
     fun effectiveImageUrl(): String {
         if (imageApiUrl.isNotBlank()) return imageApiUrl
         val base = chatApiUrl.trimEnd('/')

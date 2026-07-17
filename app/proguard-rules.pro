@@ -28,9 +28,9 @@
 # ── Top-level data models (Conversation.kt) ─
 -keep class com.tdc.aichat.Conversation { *; }
 
-# ── Nested data classes (inside JsBridge.kt) ─
--keep class com.tdc.aichat.JsBridge$SendMsgData { *; }
--keep class com.tdc.aichat.JsBridge$JsMessage { *; }
+# ── Nested data classes (inside ChatBridgeHandler.kt, relocated in v5.4) ─
+-keep class com.tdc.aichat.ChatBridgeHandler$SendMsgData { *; }
+-keep class com.tdc.aichat.ChatBridgeHandler$JsMessage { *; }
 
 # ── JsBridge @JavascriptInterface methods ───
 -keepclassmembers class com.tdc.aichat.JsBridge {

@@ -24,6 +24,20 @@ object ApiClient {
     /** Strip any non-ASCII garbage from API keys that would break HTTP headers */
     private fun cleanKey(key: String): String = key.filter { it.code < 128 }
 
+    /** Normalize a base URL: trim trailing slash, append /v1/chat/completions if needed */
+    private fun chatCompletionsUrl(baseUrl: String): String {
+        val trimmed = baseUrl.trimEnd('/')
+        return if (trimmed.endsWith("/v1")) "$trimmed/chat/completions"
+               else "$trimmed/v1/chat/completions"
+    }
+
+    /** Normalize an image API base URL: trim trailing slash, append /v1/images/generations */
+    private fun imageGenerationsUrl(baseUrl: String): String {
+        val trimmed = baseUrl.trimEnd('/')
+        return if (trimmed.endsWith("/v1")) "$trimmed/images/generations"
+               else "$trimmed/v1/images/generations"
+    }
+
     /** Build user-friendly error message from HTTP status code */
     private fun httpErrorMsg(code: Int, service: String): String = when (code) {
         400 -> "$service 请求参数错误"
@@ -93,9 +107,7 @@ object ApiClient {
             max_tokens = config.maxTokens.takeIf { it != 2048 }
         )
         val body = gson.toJson(chatRequest).toRequestBody(JSON)
-        val baseUrl = config.chatApiUrl.trimEnd('/')
-        val fullUrl = if (baseUrl.endsWith("/v1")) "$baseUrl/chat/completions"
-                      else "$baseUrl/v1/chat/completions"
+        val fullUrl = chatCompletionsUrl(config.chatApiUrl)
 
         val request = Request.Builder()
             .url(fullUrl)
@@ -225,11 +237,15 @@ object ApiClient {
         config: AppConfig,
         messages: List<ApiMessage>
     ): Result<String> = withContext(Dispatchers.IO) {
-        val chatRequest = ChatRequest(model = config.chatModel, messages = messages)
+        val chatRequest = ChatRequest(
+            model = config.chatModel,
+            messages = messages,
+            temperature = config.temperature.takeIf { it != 0.7f },
+            top_p = config.topP.takeIf { it != 1.0f },
+            max_tokens = config.maxTokens.takeIf { it != 2048 }
+        )
         val body = gson.toJson(chatRequest).toRequestBody(JSON)
-        val baseUrl = config.chatApiUrl.trimEnd('/')
-        val fullUrl = if (baseUrl.endsWith("/v1")) "$baseUrl/chat/completions"
-                      else "$baseUrl/v1/chat/completions"
+        val fullUrl = chatCompletionsUrl(config.chatApiUrl)
 
         val request = Request.Builder()
             .url(fullUrl)

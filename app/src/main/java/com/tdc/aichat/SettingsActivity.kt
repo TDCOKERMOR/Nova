@@ -44,25 +44,37 @@ class SettingsActivity : AppCompatActivity() {
         hasChanges = false
     }
 
-    /** Display API key as masked: sk-a***b1c2 */
+    /** Display API key as masked: sk-a***b1c2. Re-masks on focus loss. */
     private fun setMaskedKey(editText: EditText, key: String) {
         val id = editText.id
         realKeys[id] = key
+        applyMask(editText, key)
+        editText.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus) {
+                val real = realKeys[id] ?: return@setOnFocusChangeListener
+                if (real.isNotBlank() && editText.text.toString() != real) {
+                    editText.setText(real)
+                    editText.selectAll()
+                }
+            } else {
+                // Re-mask when focus is lost (unless user cleared the field)
+                val current = editText.text.toString()
+                val real = realKeys[id] ?: ""
+                if (current.isNotBlank() && current == real) {
+                    applyMask(editText, real)
+                }
+            }
+        }
+    }
+
+    /** Apply masked display to an EditText */
+    private fun applyMask(editText: EditText, key: String) {
         if (key.length > 8) {
             editText.setText(key.take(4) + "***" + key.takeLast(4))
         } else if (key.isNotBlank()) {
             editText.setText(key.take(2) + "***")
         } else {
             editText.setText("")
-        }
-        // On focus, reveal full key
-        editText.setOnFocusChangeListener { _, hasFocus ->
-            if (hasFocus && realKeys[id]?.let {
-                it.isNotBlank() && editText.text.toString() != it
-            } == true) {
-                editText.setText(realKeys[id])
-                editText.selectAll()
-            }
         }
     }
 

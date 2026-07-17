@@ -166,18 +166,6 @@ function onImageError(err) {
   setSendEnabled(true);
 }
 
-function onChatReply(reply) {
-  removeLoading();
-  appendMessage('assistant', reply);
-  setSendEnabled(true);
-}
-
-function onChatError(err) {
-  removeLoading();
-  appendMessage('assistant', '错误: ' + err);
-  setSendEnabled(true);
-}
-
 // ── Regenerate ────────────────────────────────
 function regenerateMsg() {
   if (Nova.state.messages.length < 2) return;

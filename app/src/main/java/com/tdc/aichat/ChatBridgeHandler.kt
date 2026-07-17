@@ -167,23 +167,75 @@ class ChatBridgeHandler(
         activity.startActivity(android.content.Intent.createChooser(intent, "分享对话"))
     }
 
-    // ── Key-pair editing ───────────────────────────—
+    // ── Key-pair editing ───────────────────────────
 
-    /** Edit a specific message pair (user + assistant) and resend */
+    /** Edit a specific user message and regenerate the assistant reply */
     fun editMessage(msgIndex: Int, newContent: String) {
         val conv = convManager.getCurrent() ?: return
         val msgs = conv.messages
         if (msgIndex < 0 || msgIndex >= msgs.size) return
         if (msgs[msgIndex].role != "user") return
+
+        // Cancel any in-flight stream before mutating state
+        currentJob?.cancel()
+        currentJob = null
+
+        // Update the edited message and truncate everything after it
         msgs[msgIndex] = msgs[msgIndex].copy(content = newContent)
-        // Remove all messages from this point onward and re-generate
         val keepCount = msgIndex + 1
         while (msgs.size > keepCount) msgs.removeAt(msgs.size - 1)
         convManager.updateMessages(conv.id, msgs)
+
+        // Notify WebView to reload the truncated message list
+        activity.runOnUiThread {
+            activity.webView.evaluateJavascript("loadMessages()", null)
+        }
+
         // Re-send from the edited message
         val apiMsgs = msgs.filter { it.imageUrl == null }
             .map { ApiMessage(role = it.role, content = it.content) }
-        sendMessage(gson.toJson(SendMsgData(apiMsgs.map { JsMessage(it.role, it.content) })))
+        val data = SendMsgData(apiMsgs.map { JsMessage(it.role, it.content) })
+        val job = scope.launch {
+            val config = configManager.loadConfig()
+            val msgList = data.messages.toMutableList()
+            if (config.systemPrompt.isNotBlank() && msgList.none { it.role == "system" }) {
+                msgList.add(0, JsMessage(role = "system", content = config.systemPrompt))
+            }
+            val apiMsgsFinal = msgList.map { ApiMessage(role = it.role, content = it.content) }
+            val msgId = "msg_" + System.currentTimeMillis()
+            activity.runOnUiThread {
+                activity.webView.evaluateJavascript("onChatStreamStart('$msgId')", null)
+            }
+            val result = ApiClient.sendMessageStream(config, apiMsgsFinal) { batch, _ ->
+                activity.runOnUiThread {
+                    activity.webView.evaluateJavascript(
+                        "onChatStreamBatch('$msgId','${escapeJs(batch)}')", null
+                    )
+                }
+            }
+            result.fold(
+                onSuccess = {
+                    activity.runOnUiThread {
+                        activity.webView.evaluateJavascript("onChatStreamEnd('$msgId')", null)
+                    }
+                },
+                onFailure = { error ->
+                    if (error is kotlinx.coroutines.CancellationException) {
+                        activity.runOnUiThread {
+                            activity.webView.evaluateJavascript("onChatStreamCancel('$msgId')", null)
+                        }
+                        return@fold
+                    }
+                    val errMsg = error.message ?: "未知错误"
+                    activity.runOnUiThread {
+                        activity.webView.evaluateJavascript(
+                            "onChatStreamError('$msgId','${escapeJs(errMsg)}')", null
+                        )
+                    }
+                }
+            )
+        }
+        currentJob = job
     }
 
     // ── Helpers ──────────────────────────────────────
