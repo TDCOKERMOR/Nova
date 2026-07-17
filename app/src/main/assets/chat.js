@@ -10,12 +10,44 @@ let _sidebarTimer = 0;
 
 // ── Init ──────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  initMarked();
   currentConvId = native.getCurrentId();
   refreshSidebar();
   loadMessages();
   checkConfig();
   autoResizeInput();
+  // Scroll bottom button visibility
+  document.getElementById('msgList').addEventListener('scroll', onMsgScroll);
 });
+
+/** Configure marked.js with highlight.js for code blocks */
+function initMarked() {
+  if (typeof marked === 'undefined') return;
+  marked.setOptions({
+    breaks: true,
+    gfm: true
+  });
+  if (typeof hljs !== 'undefined') {
+    marked.setOptions({
+      highlight: function(code, lang) {
+        if (lang && hljs.getLanguage(lang)) {
+          try { return hljs.highlight(code, { language: lang }).value; }
+          catch(e) {}
+        }
+        return code;
+      }
+    });
+  }
+}
+
+/** Render text as Markdown if marked.js is available, otherwise escape HTML */
+function renderContent(text) {
+  if (typeof marked !== 'undefined' && text) {
+    try { return marked.parse(text); }
+    catch(e) { return escHtml(text); }
+  }
+  return escHtml(text);
+}
 
 // ── Sidebar ────────────────────────────────────
 function toggleSidebar() {
@@ -98,6 +130,7 @@ function onSearch(q) {
 function selectConv(id) {
   closeSidebar();
   if (id === currentConvId) return;
+  native.cancelCurrentStream();
   native.switchConversation(id);
   currentConvId = id;
   loadMessages();
@@ -106,6 +139,7 @@ function selectConv(id) {
 }
 
 function deleteConv(id) {
+  native.cancelCurrentStream();
   native.deleteConversation(id);
   if (currentConvId === id) {
     native.newConversation();
@@ -118,6 +152,7 @@ function deleteConv(id) {
 
 function newChat() {
   closeSidebar();
+  native.cancelCurrentStream();
   native.newConversation();
   currentConvId = native.getCurrentId();
   loadMessages();
@@ -134,34 +169,65 @@ function loadMessages() {
 
 function renderMessages() {
   const el = document.getElementById('msgList');
-  el.innerHTML = messages.map(m => {
-    if (m.imageUrl) {
-      return `<div class="msg-row assistant">
-        <div class="msg-bubble">
-          <div>${escHtml(m.content)}</div>
-          <div class="img-wrap">
-            <img class="msg-img" src="${m.imageUrl}" onclick="event.stopPropagation()" alt="图片">
-            <div class="img-actions">
-              <button class="img-btn" onclick="event.stopPropagation();downloadImg('${m.imageUrl}', 'AIChat_${Date.now()}.png')" title="保存图片">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              </button>
-            </div>
-          </div>
-          ${m.imagePrompt?`<div class="msg-prompt">提示词: ${escHtml(m.imagePrompt)}</div>`:''}
-        </div>
-      </div>`;
-    }
-    return `<div class="msg-row ${m.role}">
-      <div class="msg-bubble">${escHtml(m.content)}</div>
-    </div>`;
-  }).join('');
+  el.innerHTML = messages.map(m => buildMessageHTML(m)).join('');
 }
 
 function appendMessage(role, content, imgUrl, imgPrompt) {
   messages.push({role, content, imageUrl:imgUrl||null, imagePrompt:imgPrompt||''});
-  renderMessages();
+  const node = buildMessageNode(messages[messages.length - 1]);
+  document.getElementById('msgList').appendChild(node);
   scrollBottom();
   native.updateMessages(JSON.stringify(messages));
+}
+
+/** Build a single message DOM node without re-rendering everything */
+function buildMessageNode(m) {
+  const row = document.createElement('div');
+  row.className = 'msg-row ' + m.role;
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  if (m.imageUrl) {
+    bubble.innerHTML =
+      '<div>' + escHtml(m.content) + '</div>' +
+      '<div class="img-wrap">' +
+        '<img class="msg-img" src="' + m.imageUrl + '" onclick="event.stopPropagation()" alt="\u56fe\u7247">' +
+        '<div class="img-actions">' +
+          '<button class="img-btn" onclick="event.stopPropagation();downloadImg(\'' + m.imageUrl + '\', \'AIChat_' + Date.now() + '.png\')" title="\u4fdd\u5b58\u56fe\u7247">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+          '</button>' +
+        '</div>' +
+      '</div>' +
+      (m.imagePrompt ? '<div class="msg-prompt">\u63d0\u793a\u8bcd: ' + escHtml(m.imagePrompt) + '</div>' : '');
+  } else if (m.role === 'assistant') {
+    bubble.innerHTML = renderContent(m.content);
+  } else {
+    bubble.textContent = m.content;
+  }
+  row.appendChild(bubble);
+  return row;
+}
+
+function buildMessageHTML(m) {
+  if (m.imageUrl) {
+    return `<div class="msg-row assistant">
+      <div class="msg-bubble">
+        <div>${escHtml(m.content)}</div>
+        <div class="img-wrap">
+          <img class="msg-img" src="${m.imageUrl}" onclick="event.stopPropagation()" alt="图片">
+          <div class="img-actions">
+            <button class="img-btn" onclick="event.stopPropagation();downloadImg('${m.imageUrl}', 'AIChat_${Date.now()}.png')" title="保存图片">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
+          </div>
+        </div>
+        ${m.imagePrompt?`<div class="msg-prompt">提示词: ${escHtml(m.imagePrompt)}</div>`:''}
+      </div>
+    </div>`;
+  }
+  const content = m.role === 'assistant' ? renderContent(m.content) : escHtml(m.content);
+  return `<div class="msg-row ${m.role}">
+    <div class="msg-bubble">${content}</div>
+  </div>`;
 }
 
 function addLoading() {
@@ -236,14 +302,15 @@ function onChatStreamStart(msgId) {
   setSendEnabled(false);
   scrollBottom();
 }
-function onChatStreamToken(msgId, token) {
+/** Receive a batch of tokens (optimized: multiple tokens per call) */
+function onChatStreamBatch(msgId, batch) {
   const wrap = document.getElementById(msgId);
   if (!wrap) return;
   const bubble = wrap.querySelector('.msg-bubble');
   if (!bubble) return;
   let html = bubble.innerHTML.replace('<span class="stream-cursor">|</span>', '');
   const div = document.createElement('div');
-  div.textContent = token;
+  div.textContent = batch;
   html += div.innerHTML;
   html += '<span class="stream-cursor">|</span>';
   bubble.innerHTML = html;
@@ -268,6 +335,11 @@ function onChatStreamError(msgId, err) {
   const wrap = document.getElementById(msgId);
   if (wrap) wrap.remove();
   appendMessage('assistant', '错误: ' + err);
+}
+function onChatStreamCancel(msgId) {
+  _streamMsgId = '';
+  const wrap = document.getElementById(msgId);
+  if (wrap) wrap.remove();
 }
 
 function onChatReply(reply) {
@@ -522,6 +594,7 @@ function ctxRename() {
 
 function ctxDelete() {
   if (confirm('确定删除这个对话？')) {
+    native.cancelCurrentStream();
     native.deleteConversation(_ctxConvId);
     if (currentConvId === _ctxConvId) {
       native.newConversation();
@@ -532,4 +605,13 @@ function ctxDelete() {
     refreshSidebar();
   }
   hideCtxMenu();
+}
+
+/** Show/Hide scroll-to-bottom button based on scroll distance */
+function onMsgScroll() {
+  const el = document.getElementById('msgList');
+  const btn = document.getElementById('btnScrollBottom');
+  if (!el || !btn) return;
+  var distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+  btn.classList.toggle('show', distFromBottom > 200);
 }

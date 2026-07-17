@@ -4,17 +4,13 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Base64
 import android.webkit.JavascriptInterface
-import android.webkit.WebView
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.Request
 import java.io.ByteArrayOutputStream
-import java.io.InputStream
-import java.net.HttpURLConnection
-import java.net.URL
 
 class JsBridge(
     private val activity: MainActivity,
@@ -24,25 +20,42 @@ class JsBridge(
 ) {
     private val gson = Gson()
 
+    /** Currently running streaming request job — cancelled on new send or destroy */
+    @Volatile private var currentJob: Job? = null
+
+    /** Cancel ongoing streaming request (called from WebView on destroy or new conversation) */
+    @JavascriptInterface
+    fun cancelCurrentStream() {
+        currentJob?.cancel()
+        currentJob = null
+    }
+
+    /** Called from MainActivity.onDestroy to clean up */
+    fun destroy() {
+        currentJob?.cancel()
+        currentJob = null
+    }
+
     // ── API calls ──────────────────────────────────────
 
     @JavascriptInterface
     fun sendMessage(json: String) {
-        scope.launch {
+        // Cancel any previous streaming request
+        currentJob?.cancel()
+        currentJob = scope.launch {
             val data = gson.fromJson(json, SendMsgData::class.java)
             val config = configManager.loadConfig()
             val apiMsgs = data.messages.map { ApiMessage(role = it.role, content = it.content) }
             val msgId = "msg_" + System.currentTimeMillis()
-            // Create placeholder message in UI
             activity.runOnUiThread {
                 activity.webView.evaluateJavascript(
                     "onChatStreamStart('$msgId')", null
                 )
             }
-            val result = ApiClient.sendMessageStream(config, apiMsgs) { token ->
+            val result = ApiClient.sendMessageStream(config, apiMsgs) { batch, _isFirst ->
                 activity.runOnUiThread {
                     activity.webView.evaluateJavascript(
-                        "onChatStreamToken('$msgId','${escapeJs(token)}')", null
+                        "onChatStreamBatch('$msgId','${escapeJs(batch)}')", null
                     )
                 }
             }
@@ -55,6 +68,15 @@ class JsBridge(
                     }
                 },
                 onFailure = { error ->
+                    if (error is kotlinx.coroutines.CancellationException) {
+                        // Clean up streaming bubble on cancel
+                        activity.runOnUiThread {
+                            activity.webView.evaluateJavascript(
+                                "onChatStreamCancel('$msgId')", null
+                            )
+                        }
+                        return@fold
+                    }
                     activity.runOnUiThread {
                         activity.webView.evaluateJavascript(
                             "onChatStreamError('$msgId','${escapeJs(error.message ?: "error")}')", null
@@ -63,6 +85,7 @@ class JsBridge(
                 }
             )
         }
+        currentJob = currentJob.also { /* capture in outer scope */ }
     }
 
     @JavascriptInterface
@@ -332,12 +355,32 @@ class JsBridge(
 
     // ── Helpers ──────────────────────────────────────────
 
+    /**
+     * Safe JS string escaping for evaluateJavascript.
+     * Encodes all characters that could break out of a JS string literal.
+     */
     private fun escapeJs(s: String): String {
-        return s.replace("\\", "\\\\")
-            .replace("'", "\\'")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
+        val sb = StringBuilder(s.length + 16)
+        for (c in s) {
+            when (c) {
+                '\\' -> sb.append("\\\\")
+                '\'' -> sb.append("\\\'")
+                '"' -> sb.append("\\\"")
+                '\n' -> sb.append("\\n")
+                '\r' -> sb.append("\\r")
+                '\t' -> sb.append("\\t")
+                '\b' -> sb.append("\\b")
+                '\f' -> sb.append("\\f")
+                else -> {
+                    if (c.code < 32 || c.code > 126) {
+                        sb.append(String.format("\\u%04x", c.code))
+                    } else {
+                        sb.append(c)
+                    }
+                }
+            }
+        }
+        return sb.toString()
     }
 
     data class SendMsgData(

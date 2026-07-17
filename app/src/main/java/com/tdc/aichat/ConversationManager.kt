@@ -96,10 +96,14 @@ class ConversationManager(context: Context) {
             conversations = mutableListOf()
             prefs.edit().remove("conv_list").apply()
         }
-        // Always create a new conversation on app start
-        val newConv = Conversation(title = "新对话")
-        conversations.add(0, newConv)
-        currentId = newConv.id
-        save()
+        // Create a new conversation only if none exists
+        if (conversations.isEmpty()) {
+            val newConv = Conversation(title = "新对话")
+            conversations.add(0, newConv)
+            currentId = newConv.id
+            save()
+        } else {
+            currentId = conversations.first().id
+        }
     }
 }

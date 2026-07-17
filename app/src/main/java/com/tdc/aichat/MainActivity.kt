@@ -57,4 +57,8 @@ class MainActivity : AppCompatActivity() {
     fun openSettingsActivity() {
         startActivity(Intent(this, SettingsActivity::class.java))
     }
-}
+
+    override fun onDestroy() {
+        bridge.destroy()
+        super.onDestroy()
+    }

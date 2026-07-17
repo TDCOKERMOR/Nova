@@ -48,7 +48,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow:hid
 .pin-mark{font-size:12px;margin-right:6px;flex-shrink:0}
 
 /* Main */
-.main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;position:relative}
 .topbar{
   display:flex;align-items:center;padding:0 12px;height:48px;background:var(--white);
   border-bottom:1px solid var(--border);flex-shrink:0
@@ -161,6 +161,16 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow:hid
 .loading{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin:14px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* Scroll-to-bottom button */
+.scroll-bottom-btn{
+  position:absolute;bottom:120px;right:20px;width:40px;height:40px;
+  border-radius:50%;background:var(--accent);color:#fff;border:none;
+  cursor:pointer;display:none;align-items:center;justify-content:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:50;transition:opacity .2s,transform .15s
+}
+.scroll-bottom-btn:active{transform:scale(.9)}
+.scroll-bottom-btn.show{display:flex}
+
 /* Context menu */
 .ctx-menu{
   position:fixed;background:var(--white);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,.15);
@@ -193,3 +203,53 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow:hid
   .sidebar-overlay{display:none!important}
   #btnSidebar{display:none}
 }
+
+/* ── Dark theme ─────────────────────────────── */
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1A1A2E;
+    --white:#16213E;
+    --text:#E4E6EB;
+    --sub:#8A8D91;
+    --accent:#7B78FF;
+    --accent-light:#2D2966;
+    --border:#2D2D44;
+    --shadow:0 2px 12px rgba(0,0,0,.25)
+  }
+  .msg-row.assistant .msg-bubble{box-shadow:0 1px 3px rgba(0,0,0,.15)}
+  .input-box{box-shadow:0 2px 8px rgba(0,0,0,.15)}
+  .sidebar-overlay{background:rgba(0,0,0,.6)}
+  .overlay{background:rgba(0,0,0,.6)}
+  .dialog{box-shadow:0 -4px 20px rgba(0,0,0,.3)}
+  /* Code blocks in dark mode */
+  .msg-bubble pre{background:#0D1117;border:1px solid #30363D}
+  .msg-bubble code{background:#161B22;color:#E6EDF3}
+  .msg-bubble pre code{background:transparent}
+}
+
+/* ── Markdown styles ────────────────────────── */
+.msg-bubble h1,.msg-bubble h2,.msg-bubble h3{font-weight:700;margin:.5em 0 .25em}
+.msg-bubble h1{font-size:1.4em}
+.msg-bubble h2{font-size:1.2em}
+.msg-bubble h3{font-size:1.05em}
+.msg-bubble p{margin:.25em 0}
+.msg-bubble ul,.msg-bubble ol{padding-left:1.5em;margin:.25em 0}
+.msg-bubble li{margin:2px 0}
+.msg-bubble pre{
+  background:#F0F0F3;border-radius:8px;padding:10px 12px;overflow-x:auto;
+  margin:.5em 0;font-size:13px;line-height:1.45
+}
+.msg-bubble code{
+  font-family:'JetBrains Mono','Fira Code',Consolas,monospace;
+  font-size:.88em;background:#E8E8ED;padding:1px 5px;border-radius:4px
+}
+.msg-bubble pre code{background:transparent;padding:0;border-radius:0;font-size:13px}
+.msg-bubble table{border-collapse:collapse;margin:.5em 0;font-size:13px;width:100%}
+.msg-bubble th,.msg-bubble td{border:1px solid var(--border);padding:6px 10px;text-align:left}
+.msg-bubble th{background:var(--bg);font-weight:600}
+.msg-bubble blockquote{
+  border-left:3px solid var(--accent);padding-left:12px;margin:.5em 0;
+  color:var(--sub);font-style:italic
+}
+.msg-bubble a{color:var(--accent)}
+.msg-bubble hr{border:none;border-top:1px solid var(--border);margin:.75em 0}

@@ -10,16 +10,19 @@
 - **提示词优化**：内置提示词优化对话框，支持风格和尺寸自定义
 - **多对话管理**：侧边栏管理多个对话，支持置顶、重命名、删除
 - **自动标题**：根据首条消息自动生成对话标题
-- **Markdown 渲染**：支持代码块、表格等 Markdown 语法（待完善）
+- **Markdown 渲染**：基于 marked.js + highlight.js，支持代码高亮、表格、引用
+- **暗色主题**：跟随系统自动切换暗色/亮色模式
 - **WebView 架构**：UI 基于 WebView + HTML/CSS/JS，支持热更新
+- **安全存储**：API Key 使用 Android EncryptedSharedPreferences 加密存储
 
 ## 技术栈
 
 - **语言**：Kotlin + JavaScript
 - **架构**：WebView + JsBridge
 - **网络**：OkHttp
-- **存储**：SharedPreferences
+- **存储**：EncryptedSharedPreferences（加密）+ SharedPreferences（兼容）
 - **UI**：HTML/CSS/JS（DeepSeek Chat 风格）
+- **加密**：AndroidX Security Crypto
 
 ## 项目结构
 

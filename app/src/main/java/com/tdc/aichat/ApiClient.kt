@@ -23,12 +23,17 @@ object ApiClient {
     /** Strip any non-ASCII garbage from API keys that would break HTTP headers */
     private fun cleanKey(key: String): String = key.filter { it.code < 128 }
 
-    /** Send chat message with streaming, callback receives each token */
+    /**
+     * Send chat message with streaming.
+     * Tokens are batched and delivered every ~50ms to reduce UI thread thrashing.
+     * The callback receives (batch, isFirst).
+     * Respects coroutine cancellation — check isActive during streaming.
+     */
     suspend fun sendMessageStream(
         config: AppConfig,
         messages: List<ApiMessage>,
-        onToken: (String) -> Unit
-    ): Result<Unit> = withContext(Dispatchers.IO) {
+        onBatch: (batch: String, isFirst: Boolean) -> Unit
+    ): Result<String> = withContext(Dispatchers.IO) {
         try {
             val chatRequest = ChatRequest(model = config.chatModel, messages = messages, stream = true)
             val body = gson.toJson(chatRequest).toRequestBody(JSON)
@@ -50,9 +55,16 @@ object ApiClient {
                 return@withContext Result.failure(Exception("HTTP ${response.code}: $errorBody"))
             }
             val source = response.body?.source() ?: return@withContext Result.failure(Exception("empty body"))
-            val buffer = okio.Buffer()
-            val contentBuilder = StringBuilder()
+
+            val fullContent = StringBuilder()
+            val batchBuffer = StringBuilder()
+            var lastFlush = System.currentTimeMillis()
+            var isFirst = true
+
             while (!source.exhausted()) {
+                // Respect coroutine cancellation
+                kotlinx.coroutines.ensureActive()
+
                 val line = source.readUtf8Line() ?: continue
                 if (line.startsWith("data: ")) {
                     val data = line.substring(6).trim()
@@ -61,13 +73,28 @@ object ApiClient {
                         val obj = gson.fromJson(data, ChatStreamChunk::class.java)
                         val token = obj.choices?.firstOrNull()?.delta?.content ?: ""
                         if (token.isNotEmpty()) {
-                            contentBuilder.append(token)
-                            withContext(Dispatchers.Main) { onToken(token) }
+                            fullContent.append(token)
+                            batchBuffer.append(token)
+                            // Flush batch every ~50ms or when buffer reaches ~128 chars
+                            val now = System.currentTimeMillis()
+                            if (now - lastFlush >= 50 || batchBuffer.length >= 128) {
+                                val batch = batchBuffer.toString()
+                                batchBuffer.clear()
+                                lastFlush = now
+                                withContext(Dispatchers.Main) { onBatch(batch, isFirst) }
+                                isFirst = false
+                            }
                         }
                     } catch (_: Exception) {}
                 }
             }
-            Result.success(Unit)
+            // Flush remaining
+            if (batchBuffer.isNotEmpty()) {
+                withContext(Dispatchers.Main) { onBatch(batchBuffer.toString(), isFirst) }
+            }
+            Result.success(fullContent.toString())
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e // Re-throw cancellation
         } catch (e: Exception) {
             Result.failure(e)
         }

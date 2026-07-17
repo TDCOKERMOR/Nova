@@ -2,13 +2,34 @@ package com.tdc.aichat
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 
 class ConfigManager(context: Context) {
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences("ai_chat_config", Context.MODE_PRIVATE)
+    private val prefs: SharedPreferences by lazy {
+        try {
+            val masterKey = MasterKey.Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build()
+            EncryptedSharedPreferences.create(
+                context,
+                "ai_chat_config_enc",
+                masterKey,
+                EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+                EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+            )
+        } catch (_: Exception) {
+            // Fallback to plain SharedPreferences if encryption fails
+            context.getSharedPreferences("ai_chat_config", Context.MODE_PRIVATE)
+        }
+    }
+
+    /** Cached config to avoid repeated reads. Invalidate on save. */
+    @Volatile private var cached: AppConfig? = null
 
     fun loadConfig(): AppConfig {
-        return AppConfig(
+        cached?.let { return it }
+        val config = AppConfig(
             chatApiUrl = prefs.getString("chat_api_url", "") ?: "",
             chatApiKey = prefs.getString("chat_api_key", "") ?: "",
             chatModel = prefs.getString("chat_model", "") ?: "",
@@ -19,6 +40,8 @@ class ConfigManager(context: Context) {
             imageApiKey = prefs.getString("image_api_key", "") ?: "",
             imageModel = prefs.getString("image_model", "") ?: ""
         )
+        cached = config
+        return config
     }
 
     fun saveConfig(config: AppConfig) {
@@ -33,6 +56,7 @@ class ConfigManager(context: Context) {
             .putString("image_api_key", sanitizeKey(config.imageApiKey))
             .putString("image_model", config.imageModel.trim())
             .apply()
+        cached = null // Invalidate cache
     }
 
     /** Strip non-ASCII chars that would break HTTP headers */
