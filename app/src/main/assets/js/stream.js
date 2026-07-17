@@ -3,13 +3,13 @@
 
 function onChatStreamStart(msgId) {
   Nova.state._streamMsgId = msgId;
+  Nova.state._reasoningText = '';
   var wrap = document.createElement('div');
   wrap.className = 'msg-row assistant';
   wrap.id = msgId;
   wrap.innerHTML = '<div class="msg-bubble"><span class="stream-cursor">|</span></div>';
   document.getElementById('msgList').appendChild(wrap);
   setSendEnabled(false);
-  // Switch send button to stop button
   showStopButton();
   scrollBottom();
 }
@@ -19,6 +19,41 @@ function onChatStreamBatch(msgId, batch) {
   if (!wrap) return;
   var bubble = wrap.querySelector('.msg-bubble');
   if (!bubble) return;
+
+  // Detect reasoning markers
+  if (batch === '\u0000RSTART\u0000') {
+    // Start of reasoning block — create a collapsible thinking section
+    Nova.state._reasoningText = '';
+    // Insert thinking block before the cursor
+    var thinkingHtml = '<div class="thinking-block"><details open><summary class="thinking-summary">💭 思考中...</summary><div class="thinking-content" id="thinking-' + msgId + '"></div></details></div>';
+    bubble.innerHTML = bubble.innerHTML.replace('<span class="stream-cursor">|</span>', thinkingHtml + '<span class="stream-cursor">|</span>');
+    return;
+  }
+
+  if (batch === '\u0000REND\u0000') {
+    // End of reasoning — close details so subsequent content goes to normal flow
+    var thinkingEl = document.getElementById('thinking-' + msgId);
+    if (thinkingEl) {
+      var details = thinkingEl.closest('details');
+      if (details) {
+        details.open = false;
+        var summary = details.querySelector('.thinking-summary');
+        if (summary) summary.textContent = '🧠 已深度思考';
+      }
+    }
+    return;
+  }
+
+  // Check if we're in reasoning mode (thinking block exists and is open)
+  var thinkingEl = document.getElementById('thinking-' + msgId);
+  if (thinkingEl && thinkingEl.closest('details').open) {
+    Nova.state._reasoningText += batch;
+    thinkingEl.textContent += batch;
+    scrollBottom();
+    return;
+  }
+
+  // Normal content streaming
   var html = bubble.innerHTML.replace('<span class="stream-cursor">|</span>', '');
   var div = document.createElement('div');
   div.textContent = batch;
@@ -37,10 +72,39 @@ function onChatStreamEnd(msgId) {
   var bubble = wrap.querySelector('.msg-bubble');
   if (!bubble) return;
   bubble.innerHTML = bubble.innerHTML.replace('<span class="stream-cursor">|</span>', '');
+
+  // Close reasoning block if open
+  var details = bubble.querySelector('details[open]');
+  if (details) details.open = false;
+
   var text = bubble.textContent;
   Nova.state.messages.push({ role: 'assistant', content: text });
   native.updateMessages(JSON.stringify(Nova.state.messages));
   wrap.id = '';
+
+  // Re-render markdown on final content
+  var rawContent = bubble.innerHTML;
+  // Only render markdown on the content part, preserve thinking blocks
+  var thinkingBlock = bubble.querySelector('.thinking-block');
+  if (thinkingBlock) {
+    // Keep thinking block as-is, markdown-render the rest
+    var afterThinking = '';
+    var sibling = thinkingBlock.nextSibling;
+    while (sibling) {
+      if (sibling.nodeType === 3) afterThinking += sibling.textContent;
+      else if (sibling.nodeType === 1) afterThinking += sibling.textContent;
+      sibling = sibling.nextSibling;
+    }
+    // Remove text after thinking block
+    while (thinkingBlock.nextSibling) {
+      thinkingBlock.nextSibling.remove();
+    }
+    var mdDiv = document.createElement('div');
+    mdDiv.innerHTML = renderContent(afterThinking.trim());
+    bubble.appendChild(mdDiv);
+  } else {
+    bubble.innerHTML = renderContent(text);
+  }
 }
 
 function onChatStreamError(msgId, err) {
@@ -51,7 +115,6 @@ function onChatStreamError(msgId, err) {
   if (!wrap) return;
   var bubble = wrap.querySelector('.msg-bubble');
   if (!bubble) { wrap.remove(); return; }
-  // Preserve partial content, replace cursor with retry badge
   bubble.innerHTML = bubble.innerHTML.replace('<span class="stream-cursor">|</span>', '');
   var retryHtml = '<div class="stream-retry">' +
     '<span class="stream-retry-msg">连接中断</span>' +
@@ -66,7 +129,6 @@ function onChatStreamError(msgId, err) {
 // ── Stream retry ─────────────────────────────
 function retryLastStream() {
   if (Nova.state._lastApiMsgs.length === 0) return;
-  // Remove all failed partial bubbles
   var failed = document.querySelectorAll('.stream-retry');
   for (var i = 0; i < failed.length; i++) {
     var row = failed[i].closest('.msg-row');

@@ -23,11 +23,25 @@ object ApiClient {
     /** Strip any non-ASCII garbage from API keys that would break HTTP headers */
     private fun cleanKey(key: String): String = key.filter { it.code < 128 }
 
+    /** Build user-friendly error message from HTTP status code */
+    private fun httpErrorMsg(code: Int, service: String): String = when (code) {
+        401 -> "$service Key 无效，请检查设置"
+        403 -> "$service 访问被拒绝，请检查权限"
+        404 -> "$service 地址不存在，请检查 URL 配置"
+        429 -> "请求过于频繁，请稍后重试"
+        500 -> "服务器内部错误，请稍后重试"
+        502 -> "网关错误，$service 可能暂时不可用"
+        503 -> "$service 暂时不可用，请稍后重试"
+        else -> "$service HTTP $code"
+    }
+
     /**
      * Send chat message with streaming.
+     * Supports both regular content and reasoning_content (DeepSeek-R1 style thinking).
      * Tokens are batched and delivered every ~50ms to reduce UI thread thrashing.
      * The callback receives (batch, isFirst).
-     * Respects coroutine cancellation — check isActive during streaming.
+     * Special markers: \u0000RSTART\u0000 and \u0000REND\u0000 delimit reasoning blocks.
+     * Respects coroutine cancellation.
      */
     suspend fun sendMessageStream(
         config: AppConfig,
@@ -58,18 +72,18 @@ object ApiClient {
 
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
-                val errorBody = response.body?.string() ?: "Unknown error"
-                return@withContext Result.failure(Exception("HTTP ${response.code}: $errorBody"))
+                return@withContext Result.failure(Exception(httpErrorMsg(response.code, "对话API")))
             }
             val source = response.body?.source() ?: return@withContext Result.failure(Exception("empty body"))
 
             val fullContent = StringBuilder()
+            val fullReasoning = StringBuilder()
             val batchBuffer = StringBuilder()
             var lastFlush = System.currentTimeMillis()
             var isFirst = true
+            var inReasoning = false
 
             while (!source.exhausted()) {
-                // Respect coroutine cancellation
                 kotlinx.coroutines.ensureActive()
 
                 val line = source.readUtf8Line() ?: continue
@@ -78,11 +92,44 @@ object ApiClient {
                     if (data == "[DONE]") break
                     try {
                         val obj = gson.fromJson(data, ChatStreamChunk::class.java)
-                        val token = obj.choices?.firstOrNull()?.delta?.content ?: ""
+                        val delta = obj.choices?.firstOrNull()?.delta ?: continue
+                        val token = delta.content ?: ""
+                        val reasoningToken = delta.reasoning_content ?: ""
+
+                        // Handle reasoning_content (DeepSeek-R1 thinking chain)
+                        if (reasoningToken.isNotEmpty()) {
+                            if (!inReasoning) {
+                                inReasoning = true
+                                batchBuffer.clear()
+                                withContext(Dispatchers.Main) { onBatch("\u0000RSTART\u0000", isFirst) }
+                                isFirst = false
+                            }
+                            fullReasoning.append(reasoningToken)
+                            batchBuffer.append(reasoningToken)
+                            val now = System.currentTimeMillis()
+                            if (now - lastFlush >= 50 || batchBuffer.length >= 128) {
+                                val batch = batchBuffer.toString()
+                                batchBuffer.clear()
+                                lastFlush = now
+                                withContext(Dispatchers.Main) { onBatch(batch, isFirst) }
+                                isFirst = false
+                            }
+                        }
+
                         if (token.isNotEmpty()) {
+                            if (inReasoning) {
+                                inReasoning = false
+                                // Flush remaining reasoning then send end marker
+                                if (batchBuffer.isNotEmpty()) {
+                                    withContext(Dispatchers.Main) { onBatch(batchBuffer.toString(), isFirst) }
+                                    isFirst = false
+                                }
+                                batchBuffer.clear()
+                                withContext(Dispatchers.Main) { onBatch("\u0000REND\u0000", isFirst) }
+                                isFirst = false
+                            }
                             fullContent.append(token)
                             batchBuffer.append(token)
-                            // Flush batch every ~50ms or when buffer reaches ~128 chars
                             val now = System.currentTimeMillis()
                             if (now - lastFlush >= 50 || batchBuffer.length >= 128) {
                                 val batch = batchBuffer.toString()
@@ -101,13 +148,13 @@ object ApiClient {
             }
             Result.success(fullContent.toString())
         } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e // Re-throw cancellation
+            throw e
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
-    /** Send chat message using chat API config */
+    /** Send chat message using chat API config (non-streaming) */
     suspend fun sendMessage(
         config: AppConfig,
         messages: List<ApiMessage>
@@ -130,14 +177,13 @@ object ApiClient {
             if (response.isSuccessful) {
                 val responseBody = response.body?.string() ?: ""
                 if (!responseBody.trimStart().startsWith("{")) {
-                    return@withContext Result.failure(Exception("非JSON响应: ${responseBody.take(200)}"))
+                    return@withContext Result.failure(Exception("服务器返回了非标准响应，请检查 API 地址"))
                 }
                 val chatResponse = gson.fromJson(responseBody, ChatResponse::class.java)
                 val reply = chatResponse.choices?.firstOrNull()?.message?.content ?: "(empty)"
                 Result.success(reply)
             } else {
-                val errorBody = response.body?.string() ?: "Unknown error"
-                Result.failure(Exception("HTTP ${response.code}: $errorBody"))
+                Result.failure(Exception(httpErrorMsg(response.code, "对话API")))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -171,9 +217,8 @@ object ApiClient {
             if (response.isSuccessful) {
                 val responseBody = response.body?.string() ?: ""
                 if (!responseBody.trimStart().startsWith("{")) {
-                    return@withContext Result.failure(Exception("非JSON响应 (${response.code}): ${responseBody.take(500)}\\n请求URL: $fullUrl"))
+                    return@withContext Result.failure(Exception("图片API返回了非标准响应，请检查图片API地址"))
                 }
-                // Generic extraction: walk JSON tree for any image URL
                 var imageUrl = extractImageUrl(responseBody)
                 var pollError: String? = null
                 if (imageUrl == null) {
@@ -186,12 +231,11 @@ object ApiClient {
                 }
 
                 if (imageUrl == null) {
-                    return@withContext Result.failure(Exception(pollError ?: "未找到图片URL: ${responseBody.take(300)}"))
+                    return@withContext Result.failure(Exception(pollError ?: "未找到图片URL"))
                 }
                 Result.success(imageUrl)
             } else {
-                val errorBody = response.body?.string() ?: "Unknown error"
-                Result.failure(Exception("HTTP ${response.code}: $errorBody"))
+                Result.failure(Exception(httpErrorMsg(response.code, "图片API")))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -210,13 +254,11 @@ object ApiClient {
         when {
             el.isJsonObject -> {
                 val obj = el.asJsonObject
-                // Direct URL fields (check first for priority)
                 for (key in listOf("url", "image_url", "image", "b64_json", "src")) {
                     val v = obj.get(key)
                     if (v != null && v.isJsonPrimitive && !v.asString.startsWith("{"))
                         return v.asString
                 }
-                // Recurse into nested objects/arrays
                 for ((_, v) in obj.entrySet()) {
                     findUrlIn(v)?.let { return it }
                 }
@@ -247,7 +289,6 @@ object ApiClient {
         config: AppConfig,
         requestId: String
     ): PollResult = withContext(Dispatchers.IO) {
-        // Try common polling URL patterns
         val candidates = mutableListOf<String>()
         if (submitUrl.contains("/images/")) {
             candidates.add(submitUrl.replace(Regex("/images/[^/?]*"), "/images/jobs/$requestId"))
@@ -283,7 +324,7 @@ object ApiClient {
                 } catch (_: Exception) { continue }
             }
         }
-        PollResult(null, "轮询失败: $lastError")
+        PollResult(null, "轮询超时")
     }
 
     private data class PollResult(val url: String?, val error: String?)
@@ -312,7 +353,6 @@ object ApiClient {
                 MultimodalContent(type = "text", text = "修改要求：$userRequest")
             )
 
-            // Use vision API config with fallback to chat config
             val visionModel = config.effectiveVisionModel()
             val visionUrl = config.effectiveVisionUrl().trimEnd('/')
             val visionKey = config.effectiveVisionKey()
@@ -340,8 +380,7 @@ object ApiClient {
                 val reply = chatResponse.choices?.firstOrNull()?.message?.content ?: "(empty)"
                 Result.success(reply)
             } else {
-                val errorBody = response.body?.string() ?: "Unknown error"
-                Result.failure(Exception("HTTP ${response.code}: $errorBody"))
+                Result.failure(Exception(httpErrorMsg(response.code, "视觉API")))
             }
         } catch (e: Exception) {
             Result.failure(e)

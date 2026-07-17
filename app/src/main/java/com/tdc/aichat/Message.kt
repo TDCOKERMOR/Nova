@@ -77,10 +77,13 @@ data class ChatStreamChunk(
     val choices: List<StreamChoice>?
 )
 data class StreamChoice(
-    val delta: StreamDelta?
+    val delta: StreamDelta?,
+    val index: Int? = null
 )
 data class StreamDelta(
-    val content: String?
+    val content: String?,
+    @com.google.gson.annotations.SerializedName("reasoning_content")
+    val reasoning_content: String?
 )
 
 // --- Image generation models ---

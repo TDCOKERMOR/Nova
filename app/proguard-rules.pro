@@ -1,50 +1,50 @@
-# ── Nova AI Chat ProGuard Rules ─────────────────────────
+# ── Nova ProGuard Rules ──────────────────────
+# Keep all data model classes used by Gson serialization/deserialization
 
-# Keep data classes used by Gson serialization
--keepattributes Signature
--keepattributes *Annotation*
--keepattributes SourceFile, LineNumberTable
-
-# Gson specific
+# Keep Gson models
 -keep class com.tdc.aichat.Message$ChatMessage { *; }
--keep class com.tdc.aichat.Message$ChatMessage$Companion { *; }
--keep class com.tdc.aichat.ChatMessage { *; }
--keep class com.tdc.aichat.Conversation { *; }
--keep class com.tdc.aichat.AppConfig { *; }
--keep class com.tdc.aichat.ApiMessage { *; }
--keep class com.tdc.aichat.ChatRequest { *; }
--keep class com.tdc.aichat.ChatResponse { *; }
--keep class com.tdc.aichat.Choice { *; }
--keep class com.tdc.aichat.ChatStreamChunk { *; }
--keep class com.tdc.aichat.StreamChoice { *; }
--keep class com.tdc.aichat.StreamDelta { *; }
--keep class com.tdc.aichat.ImageGenRequest { *; }
--keep class com.tdc.aichat.ImageGenResponse { *; }
--keep class com.tdc.aichat.ImageData { *; }
--keep class com.tdc.aichat.AltImageResponse { *; }
--keep class com.tdc.aichat.ImageJobResponse { *; }
--keep class com.tdc.aichat.ImageJobError { *; }
--keep class com.tdc.aichat.MultimodalContent { *; }
--keep class com.tdc.aichat.ImageUrl { *; }
--keep class com.tdc.aichat.MultimodalRequest { *; }
--keep class com.tdc.aichat.MultimodalMessage { *; }
+-keep class com.tdc.aichat.Message$ApiMessage { *; }
+-keep class com.tdc.aichat.Message$ChatRequest { *; }
+-keep class com.tdc.aichat.Message$ChatResponse { *; }
+-keep class com.tdc.aichat.Message$Choice { *; }
+-keep class com.tdc.aichat.Message$AppConfig { *; }
+-keep class com.tdc.aichat.Message$ChatStreamChunk { *; }
+-keep class com.tdc.aichat.Message$StreamChoice { *; }
+-keep class com.tdc.aichat.Message$StreamDelta { *; }
+-keep class com.tdc.aichat.Message$ImageGenRequest { *; }
+-keep class com.tdc.aichat.Message$ImageGenResponse { *; }
+-keep class com.tdc.aichat.Message$ImageData { *; }
+-keep class com.tdc.aichat.Message$AltImageResponse { *; }
+-keep class com.tdc.aichat.Message$ImageJobResponse { *; }
+-keep class com.tdc.aichat.Message$ImageJobError { *; }
+-keep class com.tdc.aichat.Message$MultimodalContent { *; }
+-keep class com.tdc.aichat.Message$ImageUrl { *; }
+-keep class com.tdc.aichat.Message$MultimodalRequest { *; }
+-keep class com.tdc.aichat.Message$MultimodalMessage { *; }
 
-# JsBridge — keep @JavascriptInterface methods
--keepclassmembers class com.tdc.aichat.JsBridge {
-    @android.webkit.JavascriptInterface <methods>;
-}
+# Keep Conversation data model
+-keep class com.tdc.aichat.Conversation { *; }
+
+# Keep JsBridge data classes (used by Gson internally)
 -keep class com.tdc.aichat.JsBridge$SendMsgData { *; }
 -keep class com.tdc.aichat.JsBridge$JsMessage { *; }
 
-# OkHttp & Okio
+# Keep JsBridge public methods (JavascriptInterface)
+-keepclassmembers class com.tdc.aichat.JsBridge {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# Keep Gson
+-keepattributes Signature
+-keepattributes *Annotation*
+-dontwarn sun.misc.**
+-keep class com.google.gson.** { *; }
+
+# Keep OkHttp
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -keep class okhttp3.** { *; }
--keep class okio.** { *; }
 
-# Encryption
--keep class androidx.security.crypto.** { *; }
-
-# Coroutines
+# Keep Coroutines
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}

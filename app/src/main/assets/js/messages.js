@@ -54,10 +54,14 @@ function buildBubbleHTML(m) {
       (m.imagePrompt ? '<div class="msg-prompt">提示词: ' + escHtml(m.imagePrompt) + '</div>' : '');
   }
   var content = m.role === 'assistant' ? renderContent(m.content) : escHtml(m.content);
+  var copyBtn = '<button class="msg-act-btn" onclick="event.stopPropagation();copyMessage(this)" title="复制">' +
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
+    '</button>';
   var regenBtn = m.role === 'assistant'
-    ? '<div class="msg-actions"><button class="msg-act-btn" onclick="event.stopPropagation();regenerateMsg()" title="重新生成"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button></div>'
+    ? '<button class="msg-act-btn" onclick="event.stopPropagation();regenerateMsg()" title="重新生成"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg></button>'
     : '';
-  return content + regenBtn;
+  var actions = '<div class="msg-actions">' + copyBtn + regenBtn + '</div>';
+  return content + actions;
 }
 
 function buildMessageNode(m) {
@@ -174,6 +178,44 @@ function regenerateMsg() {
   addLoading();
   setSendEnabled(false);
   native.sendMessage(JSON.stringify({ messages: apiMsgs }));
+}
+
+// ── Copy ─────────────────────────────────────
+function copyMessage(btn) {
+  var bubble = btn.closest('.msg-bubble');
+  if (!bubble) return;
+  // Get plain text, excluding action buttons and thinking blocks
+  var clone = bubble.cloneNode(true);
+  // Remove action buttons and thinking blocks
+  var actions = clone.querySelectorAll('.msg-actions, .thinking-block');
+  for (var i = 0; i < actions.length; i++) actions[i].remove();
+  var text = clone.textContent.trim();
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function() {
+      showCopyToast(btn);
+    });
+  } else {
+    // Fallback for older WebViews
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showCopyToast(btn);
+  }
+}
+
+function showCopyToast(btn) {
+  var orig = btn.innerHTML;
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+  btn.style.color = '#4CAF50';
+  setTimeout(function() {
+    btn.innerHTML = orig;
+    btn.style.color = '';
+  }, 1500);
 }
 
 // ── Download ──────────────────────────────────

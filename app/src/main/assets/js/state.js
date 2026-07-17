@@ -15,7 +15,8 @@ Nova.state = {
   _streamMsgId: '',
   _ctxConvId: '',
   _longPressTimer: null,
-  _lastApiMsgs: []     // stored API messages for stream retry
+  _lastApiMsgs: [],     // stored API messages for stream retry
+  _reasoningText: ''     // accumulated reasoning_content for thinking block
 };
 
 // ── Marked.js init ────────────────────────────

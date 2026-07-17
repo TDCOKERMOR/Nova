@@ -253,6 +253,21 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow:hid
   #btnSidebar{display:none}
 }
 
+/* ── Thinking block (DeepSeek-R1 reasoning) ── */
+.thinking-block{margin:.5em 0;border-radius:8px;overflow:hidden}
+.thinking-block details{border:1px solid var(--border);border-radius:8px;background:var(--bg)}
+.thinking-summary{
+  cursor:pointer;padding:8px 12px;font-size:13px;color:var(--sub);
+  user-select:none;display:flex;align-items:center;gap:4px;
+  transition:color .15s
+}
+.thinking-summary:hover{color:var(--accent)}
+.thinking-content{
+  padding:8px 12px 12px;font-size:13px;line-height:1.5;color:var(--sub);
+  white-space:pre-wrap;border-top:1px solid var(--border);
+  max-height:240px;overflow-y:auto
+}
+
 /* ── Dark theme ─────────────────────────────── */
 @media(prefers-color-scheme:dark){
   :root{
