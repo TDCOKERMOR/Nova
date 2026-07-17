@@ -28,6 +28,16 @@ class ConversationManager(context: Context) {
             .sortedWith(compareByDescending<Conversation> { it.pinned }.thenByDescending { it.createdAt })
     }
 
+    /** Full-text search: matches title or any message content */
+    fun searchFullText(query: String): List<Conversation> {
+        if (query.isBlank()) return list()
+        val q = query.lowercase()
+        return conversations.filter { conv ->
+            conv.title.lowercase().contains(q) ||
+            conv.messages.any { it.content.lowercase().contains(q) }
+        }.sortedWith(compareByDescending<Conversation> { it.pinned }.thenByDescending { it.createdAt })
+    }
+
     fun getCurrent(): Conversation? = conversations.find { it.id == currentId }
 
     fun switchTo(id: String): Conversation? {

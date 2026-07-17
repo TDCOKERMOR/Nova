@@ -10,7 +10,26 @@ function loadMessages() {
 
 function renderMessages() {
   var el = document.getElementById('msgList');
-  el.innerHTML = Nova.state.messages.map(function(m) { return buildMessageHTML(m); }).join('');
+  var msgs = Nova.state.messages;
+  // Incremental update: only add new messages since last render
+  var existing = el.querySelectorAll('.msg-row');
+  var existingCount = existing.length;
+  if (msgs.length < existingCount) {
+    // Messages were removed (e.g. conversation switch) — full rebuild
+    el.innerHTML = msgs.map(function(m) { return buildMessageHTML(m); }).join('');
+  } else if (msgs.length > existingCount) {
+    // Append only new messages
+    for (var i = existingCount; i < msgs.length; i++) {
+      var node = buildMessageNode(msgs[i]);
+      el.appendChild(node);
+    }
+  } else if (msgs.length === existingCount && existingCount > 0) {
+    // Same count — check if content changed (e.g. stream end markdown re-render)
+    var lastBubble = existing[existingCount - 1].querySelector('.msg-bubble');
+    if (lastBubble && !lastBubble.querySelector('.stream-cursor')) {
+      // Already rendered, skip
+    }
+  }
   updateWelcome();
 }
 

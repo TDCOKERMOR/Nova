@@ -67,7 +67,10 @@ function buildConvItem(c, curId) {
 function onSearch(q) {
   var list = document.getElementById('convList');
   if (!q.trim()) { doRefreshSidebar(); return; }
-  var convs = JSON.parse(native.searchConversations(q));
+  // Full-text search for queries >= 3 chars, title-only otherwise
+  var convs = q.trim().length >= 3
+    ? JSON.parse(native.searchFullText(q))
+    : JSON.parse(native.searchConversations(q));
   if (convs.length === 0) {
     list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--sub);font-size:13px">无匹配结果</div>';
   } else {

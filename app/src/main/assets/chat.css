@@ -292,6 +292,36 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow:hid
   .msg-bubble blockquote{color:#9EA1A6}
 }
 
+/* ── Scrollbar styling ──────────────────────── */
+.msg-list::-webkit-scrollbar,
+.conv-list::-webkit-scrollbar{width:5px}
+.msg-list::-webkit-scrollbar-track,
+.conv-list::-webkit-scrollbar-track{background:transparent}
+.msg-list::-webkit-scrollbar-thumb,
+.conv-list::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:10px}
+.msg-list::-webkit-scrollbar-thumb:hover,
+.conv-list::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25)}
+
+@media(prefers-color-scheme:dark){
+  .msg-list::-webkit-scrollbar-thumb,
+  .conv-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12)}
+  .msg-list::-webkit-scrollbar-thumb:hover,
+  .conv-list::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.2)}
+}
+
+/* ── Markdown tables (improved) ─────────────── */
+.msg-bubble .table-wrapper{overflow-x:auto;margin:.5em 0;border-radius:8px;border:1px solid var(--border)}
+.msg-bubble table{border-collapse:collapse;margin:0;font-size:13px;width:100%;white-space:nowrap}
+.msg-bubble th{background:var(--bg);font-weight:600;position:sticky;top:0}
+.msg-bubble th,.msg-bubble td{border:1px solid var(--border);padding:8px 12px;text-align:left}
+.msg-bubble tr:nth-child(even){background:rgba(0,0,0,.02)}
+.msg-bubble tr:hover{background:rgba(0,0,0,.04)}
+
+@media(prefers-color-scheme:dark){
+  .msg-bubble tr:nth-child(even){background:rgba(255,255,255,.03)}
+  .msg-bubble tr:hover{background:rgba(255,255,255,.05)}
+}
+
 /* ── Markdown styles ────────────────────────── */
 .msg-bubble h1,.msg-bubble h2,.msg-bubble h3{font-weight:700;margin:.5em 0 .25em}
 .msg-bubble h1{font-size:1.4em}
@@ -309,12 +339,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow:hid
   font-size:.88em;background:#E8E8ED;padding:1px 5px;border-radius:4px
 }
 .msg-bubble pre code{background:transparent;padding:0;border-radius:0;font-size:13px}
-.msg-bubble table{border-collapse:collapse;margin:.5em 0;font-size:13px;width:100%}
-.msg-bubble th,.msg-bubble td{border:1px solid var(--border);padding:6px 10px;text-align:left}
-.msg-bubble th{background:var(--bg);font-weight:600}
 .msg-bubble blockquote{
   border-left:3px solid var(--accent);padding-left:12px;margin:.5em 0;
   color:var(--sub);font-style:italic
 }
 .msg-bubble a{color:var(--accent)}
 .msg-bubble hr{border:none;border-top:1px solid var(--border);margin:.75em 0}
+/* ── End markdown styles ────────────────────── */

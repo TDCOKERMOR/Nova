@@ -34,10 +34,12 @@ app/
 ├── src/main/
 │   ├── java/com/tdc/aichat/
 │   │   ├── MainActivity.kt            # 主活动，WebView 容器
-│   │   ├── JsBridge.kt                # JS 与原生通信桥（流式/图片/导出）
-│   │   ├── ApiClient.kt               # API 请求客户端（流式+reasoning_content/非流式/图片/多模态）
+│   │   ├── JsBridge.kt                # JS 桥接门面（delegate 到 handler）
+│   │   ├── ChatBridgeHandler.kt       # 聊天 & 对话管理 handler
+│   │   ├── ImageBridgeHandler.kt      # 图片生成/分析/下载 handler
+│   │   ├── ApiClient.kt               # API 客户端（流式+重试/非流式/图片/多模态）
 │   │   ├── ConfigManager.kt           # 加密配置管理（强制加密，含温度/top_p/max_tokens）
-│   │   ├── ConversationManager.kt     # 对话管理（搜索/排序/持久化）
+│   │   ├── ConversationManager.kt     # 对话管理（标题搜索+全文搜索/排序/持久化）
 │   │   ├── Conversation.kt            # 对话数据模型
 │   │   ├── Message.kt                 # 消息 + API 数据模型（ChatRequest/ChatStreamChunk/ImageGen 等）
 │   │   ├── SettingsActivity.kt        # 设置页（API Key 脱敏显示）
@@ -117,6 +119,7 @@ TDCOKERMOR
 
 ## 版本历史
 
+- **v5.4** (2026-07-17)：架构重构（JsBridge 拆分为 ChatBridgeHandler + ImageBridgeHandler）、ApiClient 流处理优化（BatchFlusher 提取+指数退避重试）、全文对话搜索（搜索消息内容）、DOM 增量更新（消息列表性能优化）、CSS 增强（表格样式/滚动条美化/暗色模式完善）、依赖版本升级
 - **v5.3** (2026-07-17)：修复 ProGuard 规则致命 Bug（release 构建数据模型被混淆导致崩溃）、参数输入校验（temperature/topP/maxTokens）、JsBridge Job 竞态修复、ConversationManager 健壮性增强、前端资源加载优化
 - **v5.2** (2026-07-17)：思维链显示（DeepSeek-R1 reasoning_content）、消息复制按钮、本地化 CDN 资源、ProGuard 规则完善、ConfigManager 移除明文回退、错误信息中文化优化
 - **v5.1** (2026-07-17)：修复双重 UI 线程 Bug、对话 JSON 导出、README 更新

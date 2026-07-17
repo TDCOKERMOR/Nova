@@ -18,6 +18,7 @@ object ApiClient {
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)
+        .retryOnConnectionFailure(true)
         .build()
 
     /** Strip any non-ASCII garbage from API keys that would break HTTP headers */
@@ -25,6 +26,7 @@ object ApiClient {
 
     /** Build user-friendly error message from HTTP status code */
     private fun httpErrorMsg(code: Int, service: String): String = when (code) {
+        400 -> "$service 请求参数错误"
         401 -> "$service Key 无效，请检查设置"
         403 -> "$service 访问被拒绝，请检查权限"
         404 -> "$service 地址不存在，请检查 URL 配置"
@@ -35,163 +37,221 @@ object ApiClient {
         else -> "$service HTTP $code"
     }
 
+    /** True if HTTP status indicates a transient error worth retrying */
+    private fun isTransientError(code: Int): Boolean = code in listOf(429, 500, 502, 503)
+
     /**
      * Send chat message with streaming.
      * Supports both regular content and reasoning_content (DeepSeek-R1 style thinking).
-     * Tokens are batched and delivered every ~50ms to reduce UI thread thrashing.
+     * Tokens are batched and delivered every ~50ms or 128 chars to reduce UI thread thrashing.
      * The callback receives (batch, isFirst).
      * Special markers: \u0000RSTART\u0000 and \u0000REND\u0000 delimit reasoning blocks.
-     * Respects coroutine cancellation.
+     * Respects coroutine cancellation. Retries transient errors with exponential backoff.
      */
     suspend fun sendMessageStream(
         config: AppConfig,
         messages: List<ApiMessage>,
         onBatch: (batch: String, isFirst: Boolean) -> Unit
     ): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val chatRequest = ChatRequest(
-                model = config.chatModel,
-                messages = messages,
-                stream = true,
-                temperature = config.temperature.takeIf { it != 0.7f },
-                top_p = config.topP.takeIf { it != 1.0f },
-                max_tokens = config.maxTokens.takeIf { it != 2048 }
-            )
-            val body = gson.toJson(chatRequest).toRequestBody(JSON)
-            val baseUrl = config.chatApiUrl.trimEnd('/')
-            val fullUrl = if (baseUrl.endsWith("/v1")) "$baseUrl/chat/completions"
-                          else "$baseUrl/v1/chat/completions"
-
-            val request = Request.Builder()
-                .url(fullUrl)
-                .addHeader("Authorization", "Bearer ${cleanKey(config.chatApiKey)}")
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Accept", "text/event-stream")
-                .post(body)
-                .build()
-
-            val response = client.newCall(request).execute()
-            if (!response.isSuccessful) {
-                return@withContext Result.failure(Exception(httpErrorMsg(response.code, "对话API")))
-            }
-            val source = response.body?.source() ?: return@withContext Result.failure(Exception("empty body"))
-
-            val fullContent = StringBuilder()
-            val fullReasoning = StringBuilder()
-            val batchBuffer = StringBuilder()
-            var lastFlush = System.currentTimeMillis()
-            var isFirst = true
-            var inReasoning = false
-
-            while (!source.exhausted()) {
-                kotlinx.coroutines.ensureActive()
-
-                val line = source.readUtf8Line() ?: continue
-                if (line.startsWith("data: ")) {
-                    val data = line.substring(6).trim()
-                    if (data == "[DONE]") break
-                    try {
-                        val obj = gson.fromJson(data, ChatStreamChunk::class.java)
-                        val delta = obj.choices?.firstOrNull()?.delta ?: continue
-                        val token = delta.content ?: ""
-                        val reasoningToken = delta.reasoning_content ?: ""
-
-                        // Handle reasoning_content (DeepSeek-R1 thinking chain)
-                        if (reasoningToken.isNotEmpty()) {
-                            if (!inReasoning) {
-                                inReasoning = true
-                                batchBuffer.clear()
-                                withContext(Dispatchers.Main) { onBatch("\u0000RSTART\u0000", isFirst) }
-                                isFirst = false
-                            }
-                            fullReasoning.append(reasoningToken)
-                            batchBuffer.append(reasoningToken)
-                            val now = System.currentTimeMillis()
-                            if (now - lastFlush >= 50 || batchBuffer.length >= 128) {
-                                val batch = batchBuffer.toString()
-                                batchBuffer.clear()
-                                lastFlush = now
-                                withContext(Dispatchers.Main) { onBatch(batch, isFirst) }
-                                isFirst = false
-                            }
-                        }
-
-                        if (token.isNotEmpty()) {
-                            if (inReasoning) {
-                                inReasoning = false
-                                // Flush remaining reasoning then send end marker
-                                if (batchBuffer.isNotEmpty()) {
-                                    withContext(Dispatchers.Main) { onBatch(batchBuffer.toString(), isFirst) }
-                                    isFirst = false
-                                }
-                                batchBuffer.clear()
-                                withContext(Dispatchers.Main) { onBatch("\u0000REND\u0000", isFirst) }
-                                isFirst = false
-                            }
-                            fullContent.append(token)
-                            batchBuffer.append(token)
-                            val now = System.currentTimeMillis()
-                            if (now - lastFlush >= 50 || batchBuffer.length >= 128) {
-                                val batch = batchBuffer.toString()
-                                batchBuffer.clear()
-                                lastFlush = now
-                                withContext(Dispatchers.Main) { onBatch(batch, isFirst) }
-                                isFirst = false
-                            }
-                        }
-                    } catch (e: com.google.gson.JsonSyntaxException) {
-                        // Malformed SSE line — skip gracefully but don't silently swallow
-                        android.util.Log.w("Nova", "Stream parse skip: ${e.message?.take(80)}")
-                    } catch (e: com.google.gson.JsonIOException) {
-                        android.util.Log.w("Nova", "Stream IO error: ${e.message?.take(80)}")
+        var lastException: Exception? = null
+        for (attempt in 0..2) {
+            try {
+                val result = executeStreamCall(config, messages, onBatch)
+                if (result.isFailure) {
+                    val err = result.exceptionOrNull()
+                    // Don't retry auth/permanent errors
+                    if (err is HttpError && !err.transient) return@withContext result
+                    lastException = err
+                    if (attempt < 2) {
+                        delay((500L * (attempt + 1)).coerceAtMost(2000L))
+                        continue
                     }
                 }
+                return@withContext result
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                lastException = e
+                if (attempt < 2) delay(500L * (attempt + 1))
             }
-            // Flush remaining
-            if (batchBuffer.isNotEmpty()) {
-                withContext(Dispatchers.Main) { onBatch(batchBuffer.toString(), isFirst) }
+        }
+        Result.failure(lastException ?: Exception("请求失败"))
+    }
+
+    /** Core streaming implementation */
+    private suspend fun executeStreamCall(
+        config: AppConfig,
+        messages: List<ApiMessage>,
+        onBatch: (batch: String, isFirst: Boolean) -> Unit
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val chatRequest = ChatRequest(
+            model = config.chatModel,
+            messages = messages,
+            stream = true,
+            temperature = config.temperature.takeIf { it != 0.7f },
+            top_p = config.topP.takeIf { it != 1.0f },
+            max_tokens = config.maxTokens.takeIf { it != 2048 }
+        )
+        val body = gson.toJson(chatRequest).toRequestBody(JSON)
+        val baseUrl = config.chatApiUrl.trimEnd('/')
+        val fullUrl = if (baseUrl.endsWith("/v1")) "$baseUrl/chat/completions"
+                      else "$baseUrl/v1/chat/completions"
+
+        val request = Request.Builder()
+            .url(fullUrl)
+            .addHeader("Authorization", "Bearer ${cleanKey(config.chatApiKey)}")
+            .addHeader("Content-Type", "application/json")
+            .addHeader("Accept", "text/event-stream")
+            .post(body)
+            .build()
+
+        val response = client.newCall(request).execute()
+        if (!response.isSuccessful) {
+            throw HttpError(
+                httpErrorMsg(response.code, "对话API"),
+                transient = isTransientError(response.code)
+            )
+        }
+        val source = response.body?.source()
+            ?: return@withContext Result.failure(Exception("empty body"))
+
+        val fullContent = StringBuilder()
+        val fullReasoning = StringBuilder()
+        val flusher = BatchFlusher(128, 50L) { batch, isFirst ->
+            withContext(Dispatchers.Main) { onBatch(batch, isFirst) }
+        }
+        var inReasoning = false
+
+        while (!source.exhausted()) {
+            kotlinx.coroutines.ensureActive()
+            val line = source.readUtf8Line() ?: continue
+            if (!line.startsWith("data: ")) continue
+            val data = line.substring(6).trim()
+            if (data == "[DONE]") break
+            try {
+                val obj = gson.fromJson(data, ChatStreamChunk::class.java)
+                val delta = obj.choices?.firstOrNull()?.delta ?: continue
+                val token = delta.content ?: ""
+                val reasoningToken = delta.reasoning_content ?: ""
+
+                if (reasoningToken.isNotEmpty()) {
+                    if (!inReasoning) {
+                        inReasoning = true
+                        flusher.flush()
+                        withContext(Dispatchers.Main) { onBatch("\u0000RSTART\u0000", true) }
+                    }
+                    fullReasoning.append(reasoningToken)
+                    flusher.feed(reasoningToken)
+                }
+
+                if (token.isNotEmpty()) {
+                    if (inReasoning) {
+                        inReasoning = false
+                        flusher.flush()
+                        withContext(Dispatchers.Main) { onBatch("\u0000REND\u0000", false) }
+                    }
+                    fullContent.append(token)
+                    flusher.feed(token)
+                }
+            } catch (e: com.google.gson.JsonSyntaxException) {
+                android.util.Log.w("Nova", "Stream parse skip: ${e.message?.take(80)}")
+            } catch (e: com.google.gson.JsonIOException) {
+                android.util.Log.w("Nova", "Stream IO error: ${e.message?.take(80)}")
             }
-            Result.success(fullContent.toString())
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Result.failure(e)
+        }
+        flusher.flush()
+        Result.success(fullContent.toString())
+    }
+
+    /**
+     * Adaptive batch flusher for streaming tokens.
+     * Flushes when the buffer exceeds [maxChars] or [maxIntervalMs] since last flush.
+     */
+    private class BatchFlusher(
+        private val maxChars: Int,
+        private val maxIntervalMs: Long,
+        private val onFlush: (String, Boolean) -> Unit
+    ) {
+        private val buffer = StringBuilder()
+        private var lastFlush = System.currentTimeMillis()
+        private var first = true
+
+        fun feed(token: String) {
+            buffer.append(token)
+            val now = System.currentTimeMillis()
+            if (now - lastFlush >= maxIntervalMs || buffer.length >= maxChars) {
+                flush()
+            }
+        }
+
+        fun flush() {
+            if (buffer.isEmpty()) return
+            onFlush(buffer.toString(), first)
+            buffer.clear()
+            lastFlush = System.currentTimeMillis()
+            first = false
         }
     }
 
-    /** Send chat message using chat API config (non-streaming) */
+    /** HTTP error with transient flag for retry decisions */
+    class HttpError(message: String, val transient: Boolean) : Exception(message)
+
+    /** Send chat message using chat API config (non-streaming, with retry) */
     suspend fun sendMessage(
         config: AppConfig,
         messages: List<ApiMessage>
     ): Result<String> = withContext(Dispatchers.IO) {
-        try {
-            val chatRequest = ChatRequest(model = config.chatModel, messages = messages)
-            val body = gson.toJson(chatRequest).toRequestBody(JSON)
-            val baseUrl = config.chatApiUrl.trimEnd('/')
-            val fullUrl = if (baseUrl.endsWith("/v1")) "$baseUrl/chat/completions"
-                          else "$baseUrl/v1/chat/completions"
-
-            val request = Request.Builder()
-                .url(fullUrl)
-                .addHeader("Authorization", "Bearer ${cleanKey(config.chatApiKey)}")
-                .addHeader("Content-Type", "application/json")
-                .post(body)
-                .build()
-
-            val response = client.newCall(request).execute()
-            if (response.isSuccessful) {
-                val responseBody = response.body?.string() ?: ""
-                if (!responseBody.trimStart().startsWith("{")) {
-                    return@withContext Result.failure(Exception("服务器返回了非标准响应，请检查 API 地址"))
+        var lastException: Exception? = null
+        for (attempt in 0..1) {
+            try {
+                val result = executeChatCall(config, messages)
+                if (result.isFailure) {
+                    val err = result.exceptionOrNull()
+                    if (err is HttpError && !err.transient) return@withContext result
+                    lastException = err
+                    if (attempt < 1) delay(800L)
+                    continue
                 }
-                val chatResponse = gson.fromJson(responseBody, ChatResponse::class.java)
-                val reply = chatResponse.choices?.firstOrNull()?.message?.content ?: "(empty)"
-                Result.success(reply)
-            } else {
-                Result.failure(Exception(httpErrorMsg(response.code, "对话API")))
+                return@withContext result
+            } catch (e: Exception) {
+                lastException = e
+                if (attempt < 1) delay(800L)
             }
-        } catch (e: Exception) {
-            Result.failure(e)
+        }
+        Result.failure(lastException ?: Exception("请求失败"))
+    }
+
+    private suspend fun executeChatCall(
+        config: AppConfig,
+        messages: List<ApiMessage>
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val chatRequest = ChatRequest(model = config.chatModel, messages = messages)
+        val body = gson.toJson(chatRequest).toRequestBody(JSON)
+        val baseUrl = config.chatApiUrl.trimEnd('/')
+        val fullUrl = if (baseUrl.endsWith("/v1")) "$baseUrl/chat/completions"
+                      else "$baseUrl/v1/chat/completions"
+
+        val request = Request.Builder()
+            .url(fullUrl)
+            .addHeader("Authorization", "Bearer ${cleanKey(config.chatApiKey)}")
+            .addHeader("Content-Type", "application/json")
+            .post(body)
+            .build()
+
+        val response = client.newCall(request).execute()
+        if (response.isSuccessful) {
+            val responseBody = response.body?.string() ?: ""
+            if (!responseBody.trimStart().startsWith("{")) {
+                return@withContext Result.failure(Exception("服务器返回了非标准响应，请检查 API 地址"))
+            }
+            val chatResponse = gson.fromJson(responseBody, ChatResponse::class.java)
+            val reply = chatResponse.choices?.firstOrNull()?.message?.content ?: "(empty)"
+            Result.success(reply)
+        } else {
+            throw HttpError(
+                httpErrorMsg(response.code, "对话API"),
+                transient = isTransientError(response.code)
+            )
         }
     }
 
