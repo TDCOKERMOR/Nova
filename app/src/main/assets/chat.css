@@ -289,13 +289,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);overflow:hid
   .msg-bubble pre{background:#0D1117;border:1px solid #30363D}
   .msg-bubble code{background:#161B22;color:#E6EDF3}
   .msg-bubble pre code{background:transparent}
-  /* Welcome page */
-  .welcome-page .welcome-title{color:var(--text)}
-  .welcome-chip{background:var(--white)}
-  .welcome-chip:hover{background:var(--accent-light)}
-  /* Message actions */
-  .msg-act-btn{background:var(--white)}
-  .msg-act-btn:hover{background:var(--bg)}
+  .msg-bubble blockquote{color:#9EA1A6}
 }
 
 /* ── Markdown styles ────────────────────────── */

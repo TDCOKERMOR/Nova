@@ -112,13 +112,30 @@ class SettingsActivity : AppCompatActivity() {
             return
         }
 
+        // Validate model parameters
+        val tempVal = binding.etTemperature.text.toString().toFloatOrNull()
+        if (tempVal != null && (tempVal < 0f || tempVal > 2f)) {
+            Toast.makeText(this, "Temperature 范围为 0.0 ~ 2.0", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val topPVal = binding.etTopP.text.toString().toFloatOrNull()
+        if (topPVal != null && (topPVal < 0f || topPVal > 1f)) {
+            Toast.makeText(this, "Top P 范围为 0.0 ~ 1.0", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val maxTokensVal = binding.etMaxTokens.text.toString().toIntOrNull()
+        if (maxTokensVal != null && maxTokensVal <= 0) {
+            Toast.makeText(this, "Max Tokens 必须大于 0", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val config = AppConfig(
             chatApiUrl = chatUrl,
             chatApiKey = chatKey,
             chatModel = chatModel,
-            temperature = binding.etTemperature.text.toString().toFloatOrNull() ?: 0.7f,
-            topP = binding.etTopP.text.toString().toFloatOrNull() ?: 1.0f,
-            maxTokens = binding.etMaxTokens.text.toString().toIntOrNull() ?: 2048,
+            temperature = tempVal ?: 0.7f,
+            topP = topPVal ?: 1.0f,
+            maxTokens = maxTokensVal ?: 2048,
             visionApiUrl = binding.etVisionApiUrl.text.toString().trim(),
             visionApiKey = getRealKey(binding.etVisionApiKey),
             visionModel = binding.etVisionModel.text.toString().trim(),

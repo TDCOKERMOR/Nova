@@ -90,20 +90,27 @@ class ConversationManager(context: Context) {
             if (json != null) {
                 val type = object : TypeToken<MutableList<Conversation>>() {}.type
                 conversations = gson.fromJson(json, type) ?: mutableListOf()
+                // Prune oversized conversations to prevent SharedPreferences overflow
+                if (conversations.size > 200) {
+                    conversations = conversations.take(200).toMutableList()
+                }
             }
         } catch (e: Exception) {
             // Corrupted data — start fresh
             conversations = mutableListOf()
             prefs.edit().remove("conv_list").apply()
         }
-        // Create a new conversation only if none exists
+        // Ensure at least one conversation exists and currentId is valid
         if (conversations.isEmpty()) {
             val newConv = Conversation(title = "新对话")
             conversations.add(0, newConv)
             currentId = newConv.id
-            save()
         } else {
-            currentId = conversations.first().id
+            // Validate currentId — if corrupted or stale, fall back to first
+            if (currentId.isBlank() || conversations.none { it.id == currentId }) {
+                currentId = conversations.first().id
+            }
         }
+        save()
     }
 }

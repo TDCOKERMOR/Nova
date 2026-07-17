@@ -5,11 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>AI Chat</title>
 <link rel="stylesheet" href="chat.css">
-<!-- Markdown rendering: marked.js + highlight.js -->
+<!-- Markdown: stylesheets load early to prevent FOUC, scripts deferred to body end -->
 <link rel="stylesheet" href="github.min.css">
 <link rel="stylesheet" href="github-dark.min.css" media="(prefers-color-scheme: dark)">
-<script src="marked.min.js"></script>
-<script src="highlight.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -127,6 +125,9 @@
   </div>
 </div>
 
+<!-- Markdown engine (deferred to avoid blocking first paint) -->
+<script src="marked.min.js"></script>
+<script src="highlight.min.js"></script>
 <script src="js/state.js"></script>
 <script src="js/sidebar.js"></script>
 <script src="js/messages.js"></script>

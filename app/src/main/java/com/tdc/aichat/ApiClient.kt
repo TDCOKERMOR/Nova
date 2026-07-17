@@ -139,7 +139,12 @@ object ApiClient {
                                 isFirst = false
                             }
                         }
-                    } catch (_: Exception) {}
+                    } catch (e: com.google.gson.JsonSyntaxException) {
+                        // Malformed SSE line — skip gracefully but don't silently swallow
+                        android.util.Log.w("Nova", "Stream parse skip: ${e.message?.take(80)}")
+                    } catch (e: com.google.gson.JsonIOException) {
+                        android.util.Log.w("Nova", "Stream IO error: ${e.message?.take(80)}")
+                    }
                 }
             }
             // Flush remaining

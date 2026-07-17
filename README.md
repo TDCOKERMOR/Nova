@@ -25,7 +25,7 @@
 - **存储**：EncryptedSharedPreferences（强制加密，无回退）
 - **UI**：HTML/CSS/JS（DeepSeek Chat 风格）
 - **加密**：AndroidX Security Crypto
-- **序列化**：Gson（带 ProGuard 保留规则）
+- **序列化**：Gson（带 ProGuard 保留规则，已修复 v5.2 的嵌套类引用错误）
 
 ## 项目结构
 
@@ -117,6 +117,7 @@ TDCOKERMOR
 
 ## 版本历史
 
+- **v5.3** (2026-07-17)：修复 ProGuard 规则致命 Bug（release 构建数据模型被混淆导致崩溃）、参数输入校验（temperature/topP/maxTokens）、JsBridge Job 竞态修复、ConversationManager 健壮性增强、前端资源加载优化
 - **v5.2** (2026-07-17)：思维链显示（DeepSeek-R1 reasoning_content）、消息复制按钮、本地化 CDN 资源、ProGuard 规则完善、ConfigManager 移除明文回退、错误信息中文化优化
 - **v5.1** (2026-07-17)：修复双重 UI 线程 Bug、对话 JSON 导出、README 更新
 - **v5.0** (2026-07-16)：流式输出、自动创建新对话、图标更新、Bug 修复

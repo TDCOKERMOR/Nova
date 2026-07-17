@@ -41,9 +41,11 @@ class JsBridge(
 
     @JavascriptInterface
     fun sendMessage(json: String) {
-        // Cancel any previous streaming request
+        // Cancel any previous streaming request and prevent double-send
         currentJob?.cancel()
-        currentJob = scope.launch {
+        currentJob = null
+
+        val job = scope.launch {
             val data = gson.fromJson(json, SendMsgData::class.java)
             val config = configManager.loadConfig()
             // Insert system prompt if configured and not already present
@@ -85,13 +87,13 @@ class JsBridge(
                     }
                     activity.runOnUiThread {
                         activity.webView.evaluateJavascript(
-                            "onChatStreamError('$msgId','${escapeJs(error.message ?: "error")}')", null
+                            "onChatStreamError('$msgId','${escapeJs(error.message ?: "未知错误")}')", null
                         )
                     }
                 }
             )
         }
-        currentJob = currentJob.also { /* capture in outer scope */ }
+        currentJob = job
     }
 
     @JavascriptInterface
