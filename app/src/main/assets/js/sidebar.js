@@ -167,3 +167,16 @@ function ctxDelete() {
   }
   hideCtxMenu();
 }
+
+function ctxExport() {
+  var id = Nova.state._ctxConvId;
+  hideCtxMenu();
+  if (id === Nova.state.currentConvId) {
+    var msgs = Nova.state.messages
+      .filter(function(m) { return !m.imageUrl; })
+      .map(function(m) { return { role: m.role, content: m.content }; });
+    native.shareText(JSON.stringify(msgs, null, 2), 'conversation.json');
+  } else {
+    native.shareConversation(id);
+  }
+}

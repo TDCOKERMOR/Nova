@@ -248,6 +248,27 @@ class JsBridge(
         return gson.toJson(convManager.search(query))
     }
 
+    // ── Conversation export ─────────────────────────
+
+    @JavascriptInterface
+    fun shareConversation(id: String) {
+        val conv = convManager.list().find { it.id == id } ?: return
+        val msgs = conv.messages.filter { it.imageUrl == null }
+            .map { mapOf("role" to it.role, "content" to it.content) }
+        val json = gson.toJson(msgs)
+        shareText(json, "conversation.json")
+    }
+
+    @JavascriptInterface
+    fun shareText(text: String, filename: String) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "application/json"
+            putExtra(Intent.EXTRA_TEXT, text)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        activity.startActivity(Intent.createChooser(intent, "分享对话"))
+    }
+
     // ── Config ──────────────────────────────────────────
 
     @JavascriptInterface
@@ -292,11 +313,9 @@ class JsBridge(
                     val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
                     activity.runOnUiThread {
                         val escapedB64 = escapeJs(b64)
-                    activity.runOnUiThread {
                         activity.webView.evaluateJavascript(
                             "onImagePicked('$escapedB64','image/jpeg',${bytes.size})", null
                         )
-                    }
                     }
                 }
             } catch (_: Exception) {}

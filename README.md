@@ -32,27 +32,30 @@ app/
 │   ├── java/com/tdc/aichat/
 │   │   ├── MainActivity.kt            # 主活动，WebView 容器
 │   │   ├── JsBridge.kt                # JS 与原生通信桥
-│   │   ├── ApiClient.kt               # API 请求客户端
-│   │   ├── ConfigManager.kt           # 配置管理
+│   │   ├── ApiClient.kt               # API 请求客户端（流式/非流式/图片/多模态）
+│   │   ├── ConfigManager.kt           # 加密配置管理（含温度/top_p/max_tokens）
 │   │   ├── ConversationManager.kt     # 对话管理
 │   │   ├── Conversation.kt            # 对话数据模型
-│   │   ├── Message.kt                 # 消息/API 数据模型
-│   │   ├── SettingsActivity.kt        # 设置页
+│   │   ├── Message.kt                 # 消息 + API 数据模型（ChatRequest/ChatStreamChunk/ImageGen 等）
+│   │   ├── SettingsActivity.kt        # 设置页（API Key 脱敏显示）
 │   │   └── PromptOptimizeDialog.kt    # 提示词优化弹窗
 │   ├── assets/
-│   │   ├── chat.html                  # 聊天界面 HTML
-│   │   ├── chat.css                   # 聊天界面样式
+│   │   ├── chat.html                  # 聊天界面 HTML（含欢迎页）
+│   │   ├── chat.css                   # 聊天界面样式（暗色主题）
 │   │   └── js/
-│   │       ├── state.js               # 全局状态 & 工具函数
-│   │       ├── sidebar.js             # 侧边栏逻辑
-│   │       ├── messages.js            # 消息渲染 & 图片管线
-│   │       ├── stream.js              # 流式输出处理
-│   │       ├── input.js               # 输入 & 发送逻辑
-│   │       ├── dialog.js              # 提示词优化弹窗
-│   │       └── app.js                 # 入口 & 初始化
+│   │       ├── state.js               # 全局状态 & 工具函数（Nova.state）
+│   │       ├── sidebar.js             # 侧边栏 + 对话管理 + 上下文菜单
+│   │       ├── messages.js            # 消息渲染 + Markdown + 图片管线 + 重新生成
+│   │       ├── stream.js              # 流式输出 + 停止按钮 + 断线重试
+│   │       ├── input.js               # 输入 + 发送 + 附件 + /生图 命令
+│   │       ├── dialog.js              # 提示词优化弹窗 + 路由
+│   │       └── app.js                 # 入口 & 初始化 & 事件绑定
 │   └── res/
+│       └── layout/
+│           └── activity_settings.xml   # 设置页布局（对话/ Vision/ Image/ System Prompt/ 模型参数）
 ├── build.gradle
-└── proguard-rules.pro
+├── proguard-rules.pro
+└── .github/workflows/ci.yml           # GitHub Actions CI（lint + build + artifact）
 ```
 
 ## 配置说明
@@ -97,6 +100,7 @@ TDCOKERMOR
 
 ## 版本历史
 
+- **v5.1** (2026-07-17)：修复双重 UI 线程 Bug、对话 JSON 导出、README 更新
 - **v5.0** (2026-07-16)：流式输出、自动创建新对话、图标更新、Bug 修复
 - **v4.0**：侧边栏管理、多对话支持、自动标题
 - **v3.x**：提示词优化、图片生成集成
