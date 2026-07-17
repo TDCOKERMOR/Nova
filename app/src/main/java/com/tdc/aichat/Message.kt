@@ -21,7 +21,12 @@ data class ApiMessage(
 data class ChatRequest(
     val model: String,
     val messages: List<ApiMessage>,
-    val stream: Boolean = false
+    val stream: Boolean = false,
+    val temperature: Float? = null,
+    @com.google.gson.annotations.SerializedName("top_p")
+    val top_p: Float? = null,
+    @com.google.gson.annotations.SerializedName("max_tokens")
+    val max_tokens: Int? = null
 )
 
 data class ChatResponse(
@@ -45,7 +50,13 @@ data class AppConfig(
     // Image generation API (falls back to chat config)
     val imageApiUrl: String = "",
     val imageApiKey: String = "",
-    val imageModel: String = ""
+    val imageModel: String = "",
+    // System prompt for chat (optional, stored in SharedPreferences)
+    val systemPrompt: String = "",
+    // Model parameters
+    val temperature: Float = 0.7f,
+    val topP: Float = 1.0f,
+    val maxTokens: Int = 2048
 ) {
     /** Effective image API URL: if blank, uses chat URL + /v1/images/generations */
     fun effectiveImageUrl(): String {

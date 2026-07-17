@@ -35,7 +35,14 @@ object ApiClient {
         onBatch: (batch: String, isFirst: Boolean) -> Unit
     ): Result<String> = withContext(Dispatchers.IO) {
         try {
-            val chatRequest = ChatRequest(model = config.chatModel, messages = messages, stream = true)
+            val chatRequest = ChatRequest(
+                model = config.chatModel,
+                messages = messages,
+                stream = true,
+                temperature = config.temperature.takeIf { it != 0.7f },
+                top_p = config.topP.takeIf { it != 1.0f },
+                max_tokens = config.maxTokens.takeIf { it != 2048 }
+            )
             val body = gson.toJson(chatRequest).toRequestBody(JSON)
             val baseUrl = config.chatApiUrl.trimEnd('/')
             val fullUrl = if (baseUrl.endsWith("/v1")) "$baseUrl/chat/completions"

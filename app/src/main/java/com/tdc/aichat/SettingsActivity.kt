@@ -3,6 +3,7 @@ package com.tdc.aichat
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.widget.EditText
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -12,6 +13,8 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsBinding
     private lateinit var configManager: ConfigManager
     private var hasChanges = false
+    // Store real API keys separately for masked display
+    private val realKeys = mutableMapOf<Int, String>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,15 +29,41 @@ class SettingsActivity : AppCompatActivity() {
     private fun loadCurrentConfig() {
         val c = configManager.loadConfig()
         binding.etChatApiUrl.setText(c.chatApiUrl)
-        binding.etChatApiKey.setText(c.chatApiKey)
+        setMaskedKey(binding.etChatApiKey, c.chatApiKey)
         binding.etChatModel.setText(c.chatModel)
         binding.etVisionApiUrl.setText(c.visionApiUrl)
-        binding.etVisionApiKey.setText(c.visionApiKey)
+        setMaskedKey(binding.etVisionApiKey, c.visionApiKey)
         binding.etVisionModel.setText(c.visionModel)
         binding.etImageApiUrl.setText(c.imageApiUrl)
-        binding.etImageApiKey.setText(c.imageApiKey)
+        setMaskedKey(binding.etImageApiKey, c.imageApiKey)
         binding.etImageModel.setText(c.imageModel)
+        binding.etSystemPrompt.setText(c.systemPrompt)
+        binding.etTemperature.setText(c.temperature.toString())
+        binding.etTopP.setText(c.topP.toString())
+        binding.etMaxTokens.setText(c.maxTokens.toString())
         hasChanges = false
+    }
+
+    /** Display API key as masked: sk-a***b1c2 */
+    private fun setMaskedKey(editText: EditText, key: String) {
+        val id = editText.id
+        realKeys[id] = key
+        if (key.length > 8) {
+            editText.setText(key.take(4) + "***" + key.takeLast(4))
+        } else if (key.isNotBlank()) {
+            editText.setText(key.take(2) + "***")
+        } else {
+            editText.setText("")
+        }
+        // On focus, reveal full key
+        editText.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && realKeys[id]?.let {
+                it.isNotBlank() && editText.text.toString() != it
+            } == true) {
+                editText.setText(realKeys[id])
+                editText.selectAll()
+            }
+        }
     }
 
     private fun setupListeners() {
@@ -53,14 +82,29 @@ class SettingsActivity : AppCompatActivity() {
         binding.etImageApiUrl.addTextChangedListener(watcher)
         binding.etImageApiKey.addTextChangedListener(watcher)
         binding.etImageModel.addTextChangedListener(watcher)
+        binding.etSystemPrompt.addTextChangedListener(watcher)
+        binding.etTemperature.addTextChangedListener(watcher)
+        binding.etTopP.addTextChangedListener(watcher)
+        binding.etMaxTokens.addTextChangedListener(watcher)
 
         binding.btnSave.setOnClickListener { doSave() }
         binding.btnBack.setOnClickListener { onBackPressed() }
     }
 
+    /** Get the real key value, falling back to stored value if field is still masked */
+    private fun getRealKey(editText: EditText): String {
+        val current = editText.text.toString().trim()
+        val id = editText.id
+        // If the field was never focused (still masked), use stored real value
+        if (current.contains("***")) {
+            return realKeys[id] ?: current
+        }
+        return current
+    }
+
     private fun doSave() {
         val chatUrl = binding.etChatApiUrl.text.toString().trim()
-        val chatKey = binding.etChatApiKey.text.toString().trim()
+        val chatKey = getRealKey(binding.etChatApiKey)
         val chatModel = binding.etChatModel.text.toString().trim()
 
         if (chatUrl.isEmpty() || chatKey.isEmpty() || chatModel.isEmpty()) {
@@ -72,12 +116,16 @@ class SettingsActivity : AppCompatActivity() {
             chatApiUrl = chatUrl,
             chatApiKey = chatKey,
             chatModel = chatModel,
+            temperature = binding.etTemperature.text.toString().toFloatOrNull() ?: 0.7f,
+            topP = binding.etTopP.text.toString().toFloatOrNull() ?: 1.0f,
+            maxTokens = binding.etMaxTokens.text.toString().toIntOrNull() ?: 2048,
             visionApiUrl = binding.etVisionApiUrl.text.toString().trim(),
-            visionApiKey = binding.etVisionApiKey.text.toString().trim(),
+            visionApiKey = getRealKey(binding.etVisionApiKey),
             visionModel = binding.etVisionModel.text.toString().trim(),
             imageApiUrl = binding.etImageApiUrl.text.toString().trim(),
-            imageApiKey = binding.etImageApiKey.text.toString().trim(),
-            imageModel = binding.etImageModel.text.toString().trim()
+            imageApiKey = getRealKey(binding.etImageApiKey),
+            imageModel = binding.etImageModel.text.toString().trim(),
+            systemPrompt = binding.etSystemPrompt.text.toString()
         )
         configManager.saveConfig(config)
         hasChanges = false

@@ -16,7 +16,7 @@ class PromptOptimizeDialog(
 ) : DialogFragment() {
 
     private var _binding: DialogPromptOptimizeBinding? = null
-    private val binding get() = _binding!!
+    private val binding get() = requireNotNull(_binding) { "Binding not initialized" }
     private var lastOptimized = ""
 
     override fun onCreateDialog(savedInstanceState: Bundle?): Dialog {

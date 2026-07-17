@@ -33,12 +33,16 @@ class ConfigManager(context: Context) {
             chatApiUrl = prefs.getString("chat_api_url", "") ?: "",
             chatApiKey = prefs.getString("chat_api_key", "") ?: "",
             chatModel = prefs.getString("chat_model", "") ?: "",
+            temperature = prefs.getFloat("temperature", 0.7f),
+            topP = prefs.getFloat("top_p", 1.0f),
+            maxTokens = prefs.getInt("max_tokens", 2048),
             visionApiUrl = prefs.getString("vision_api_url", "") ?: "",
             visionApiKey = prefs.getString("vision_api_key", "") ?: "",
             visionModel = prefs.getString("vision_model", "") ?: "",
             imageApiUrl = prefs.getString("image_api_url", "") ?: "",
             imageApiKey = prefs.getString("image_api_key", "") ?: "",
-            imageModel = prefs.getString("image_model", "") ?: ""
+            imageModel = prefs.getString("image_model", "") ?: "",
+            systemPrompt = prefs.getString("system_prompt", "") ?: ""
         )
         cached = config
         return config
@@ -49,12 +53,16 @@ class ConfigManager(context: Context) {
             .putString("chat_api_url", config.chatApiUrl.trim())
             .putString("chat_api_key", sanitizeKey(config.chatApiKey))
             .putString("chat_model", config.chatModel.trim())
+            .putFloat("temperature", config.temperature)
+            .putFloat("top_p", config.topP)
+            .putInt("max_tokens", config.maxTokens)
             .putString("vision_api_url", config.visionApiUrl.trim())
             .putString("vision_api_key", sanitizeKey(config.visionApiKey))
             .putString("vision_model", config.visionModel.trim())
             .putString("image_api_url", config.imageApiUrl.trim())
             .putString("image_api_key", sanitizeKey(config.imageApiKey))
             .putString("image_model", config.imageModel.trim())
+            .putString("system_prompt", config.systemPrompt)
             .apply()
         cached = null // Invalidate cache
     }

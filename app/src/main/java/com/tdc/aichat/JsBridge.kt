@@ -11,6 +11,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 
 class JsBridge(
     private val activity: MainActivity,
@@ -45,7 +46,12 @@ class JsBridge(
         currentJob = scope.launch {
             val data = gson.fromJson(json, SendMsgData::class.java)
             val config = configManager.loadConfig()
-            val apiMsgs = data.messages.map { ApiMessage(role = it.role, content = it.content) }
+            // Insert system prompt if configured and not already present
+            val msgList = data.messages.toMutableList()
+            if (config.systemPrompt.isNotBlank() && msgList.none { it.role == "system" }) {
+                msgList.add(0, JsMessage(role = "system", content = config.systemPrompt))
+            }
+            val apiMsgs = msgList.map { ApiMessage(role = it.role, content = it.content) }
             val msgId = "msg_" + System.currentTimeMillis()
             activity.runOnUiThread {
                 activity.webView.evaluateJavascript(
@@ -285,13 +291,46 @@ class JsBridge(
                 if (bytes != null) {
                     val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
                     activity.runOnUiThread {
+                        val escapedB64 = escapeJs(b64)
+                    activity.runOnUiThread {
                         activity.webView.evaluateJavascript(
-                            "onImagePicked('$b64','image/jpeg',${bytes.size})", null
+                            "onImagePicked('$escapedB64','image/jpeg',${bytes.size})", null
                         )
+                    }
                     }
                 }
             } catch (_: Exception) {}
         }
+    }
+
+    // ── Helpers ──────────────────────────────────────────
+
+    /**
+     * Safe JS string escaping for evaluateJavascript.
+     * Encodes all characters that could break out of a JS string literal.
+     */
+    private fun escapeJs(s: String): String {
+        val sb = StringBuilder(s.length + 16)
+        for (c in s) {
+            when (c) {
+                '\\' -> sb.append("\\\\")
+                '\'' -> sb.append("\\'")
+                '"' -> sb.append("\\\"")
+                '\n' -> sb.append("\\n")
+                '\r' -> sb.append("\\r")
+                '\t' -> sb.append("\\t")
+                '\b' -> sb.append("\\b")
+                '\f' -> sb.append("\\f")
+                else -> {
+                    if (c.code < 32 || c.code > 126) {
+                        sb.append(String.format("\\u%04x", c.code))
+                    } else {
+                        sb.append(c)
+                    }
+                }
+            }
+        }
+        return sb.toString()
     }
 
     // ── Image download ───────────────────────────────────
@@ -353,35 +392,7 @@ class JsBridge(
         }
     }
 
-    // ── Helpers ──────────────────────────────────────────
-
-    /**
-     * Safe JS string escaping for evaluateJavascript.
-     * Encodes all characters that could break out of a JS string literal.
-     */
-    private fun escapeJs(s: String): String {
-        val sb = StringBuilder(s.length + 16)
-        for (c in s) {
-            when (c) {
-                '\\' -> sb.append("\\\\")
-                '\'' -> sb.append("\\\'")
-                '"' -> sb.append("\\\"")
-                '\n' -> sb.append("\\n")
-                '\r' -> sb.append("\\r")
-                '\t' -> sb.append("\\t")
-                '\b' -> sb.append("\\b")
-                '\f' -> sb.append("\\f")
-                else -> {
-                    if (c.code < 32 || c.code > 126) {
-                        sb.append(String.format("\\u%04x", c.code))
-                    } else {
-                        sb.append(c)
-                    }
-                }
-            }
-        }
-        return sb.toString()
-    }
+    // ── Data classes ─────────────────────────────────────
 
     data class SendMsgData(
         val messages: List<JsMessage>

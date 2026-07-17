@@ -30,18 +30,29 @@
 app/
 ├── src/main/
 │   ├── java/com/tdc/aichat/
-│   │   ├── MainActivity.kt        # 主活动，WebView 容器
-│   │   ├── JsBridge.kt            # JS 与原生通信桥
-│   │   ├── ApiClient.kt           # API 请求客户端
-│   │   ├── ConfigManager.kt       # 配置管理
-│   │   ├── ConversationManager.kt # 对话管理
-│   │   └── Message.kt             # 数据模型
+│   │   ├── MainActivity.kt            # 主活动，WebView 容器
+│   │   ├── JsBridge.kt                # JS 与原生通信桥
+│   │   ├── ApiClient.kt               # API 请求客户端
+│   │   ├── ConfigManager.kt           # 配置管理
+│   │   ├── ConversationManager.kt     # 对话管理
+│   │   ├── Conversation.kt            # 对话数据模型
+│   │   ├── Message.kt                 # 消息/API 数据模型
+│   │   ├── SettingsActivity.kt        # 设置页
+│   │   └── PromptOptimizeDialog.kt    # 提示词优化弹窗
 │   ├── assets/
-│   │   ├── chat.html              # 聊天界面 HTML
-│   │   ├── chat.css               # 聊天界面样式
-│   │   └── chat.js                # 聊天界面逻辑
-│   └── res/                       # 原生资源（图标等）
-└── build.gradle
+│   │   ├── chat.html                  # 聊天界面 HTML
+│   │   ├── chat.css                   # 聊天界面样式
+│   │   └── js/
+│   │       ├── state.js               # 全局状态 & 工具函数
+│   │       ├── sidebar.js             # 侧边栏逻辑
+│   │       ├── messages.js            # 消息渲染 & 图片管线
+│   │       ├── stream.js              # 流式输出处理
+│   │       ├── input.js               # 输入 & 发送逻辑
+│   │       ├── dialog.js              # 提示词优化弹窗
+│   │       └── app.js                 # 入口 & 初始化
+│   └── res/
+├── build.gradle
+└── proguard-rules.pro
 ```
 
 ## 配置说明
