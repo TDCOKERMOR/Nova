@@ -36,7 +36,22 @@ class MainActivity : AppCompatActivity() {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.allowFileAccess = false
-            webViewClient = WebViewClient()
+            settings.allowContentAccess = false
+            settings.allowFileAccessFromFileURLs = false
+            settings.allowUniversalAccessFromFileURLs = false
+            settings.databaseEnabled = false
+            // TLS hardening
+            settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
+            webViewClient = object : WebViewClient() {
+                override fun onReceivedSslError(
+                    view: WebView?,
+                    handler: android.webkit.SslErrorHandler,
+                    error: android.net.http.SslError?
+                ) {
+                    // Never proceed on SSL errors
+                    handler.cancel()
+                }
+            }
             webChromeClient = WebChromeClient()
         }
         setContentView(webView)

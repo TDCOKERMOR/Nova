@@ -34,50 +34,50 @@ class ChatBridgeHandler(
 
     fun sendMessage(json: String) {
         currentJob?.cancel()
-        currentJob = null
+        val data = gson.fromJson(json, SendMsgData::class.java)
+        currentJob = runStream(data.messages)
+    }
 
-        val job = scope.launch {
-            val data = gson.fromJson(json, SendMsgData::class.java)
-            val config = configManager.loadConfig()
-            val msgList = data.messages.toMutableList()
-            if (config.systemPrompt.isNotBlank() && msgList.none { it.role == "system" }) {
-                msgList.add(0, JsMessage(role = "system", content = config.systemPrompt))
-            }
-            val apiMsgs = msgList.map { ApiMessage(role = it.role, content = it.content) }
-            val msgId = "msg_" + System.currentTimeMillis()
+    /** Shared streaming pipeline: prepend system prompt, then send via ApiClient */
+    private fun runStream(jsMessages: List<JsMessage>): Job = scope.launch {
+        val config = configManager.loadConfig()
+        val msgList = jsMessages.toMutableList()
+        if (config.systemPrompt.isNotBlank() && msgList.none { it.role == "system" }) {
+            msgList.add(0, JsMessage(role = "system", content = config.systemPrompt))
+        }
+        val apiMsgs = msgList.map { ApiMessage(role = it.role, content = it.content) }
+        val msgId = "msg_" + System.currentTimeMillis()
+        activity.runOnUiThread {
+            activity.webView.evaluateJavascript("onChatStreamStart('$msgId')", null)
+        }
+        val result = ApiClient.sendMessageStream(config, apiMsgs) { batch, _ ->
             activity.runOnUiThread {
-                activity.webView.evaluateJavascript("onChatStreamStart('$msgId')", null)
+                activity.webView.evaluateJavascript(
+                    "onChatStreamBatch('$msgId','${escapeJs(batch)}')", null
+                )
             }
-            val result = ApiClient.sendMessageStream(config, apiMsgs) { batch, _isFirst ->
+        }
+        result.fold(
+            onSuccess = {
+                activity.runOnUiThread {
+                    activity.webView.evaluateJavascript("onChatStreamEnd('$msgId')", null)
+                }
+            },
+            onFailure = { error ->
+                if (error is kotlinx.coroutines.CancellationException) {
+                    activity.runOnUiThread {
+                        activity.webView.evaluateJavascript("onChatStreamCancel('$msgId')", null)
+                    }
+                    return@fold
+                }
+                val errMsg = error.message ?: "未知错误"
                 activity.runOnUiThread {
                     activity.webView.evaluateJavascript(
-                        "onChatStreamBatch('$msgId','${escapeJs(batch)}')", null
+                        "onChatStreamError('$msgId','${escapeJs(errMsg)}')", null
                     )
                 }
             }
-            result.fold(
-                onSuccess = {
-                    activity.runOnUiThread {
-                        activity.webView.evaluateJavascript("onChatStreamEnd('$msgId')", null)
-                    }
-                },
-                onFailure = { error ->
-                    if (error is kotlinx.coroutines.CancellationException) {
-                        activity.runOnUiThread {
-                            activity.webView.evaluateJavascript("onChatStreamCancel('$msgId')", null)
-                        }
-                        return@fold
-                    }
-                    val errMsg = error.message ?: "未知错误"
-                    activity.runOnUiThread {
-                        activity.webView.evaluateJavascript(
-                            "onChatStreamError('$msgId','${escapeJs(errMsg)}')", null
-                        )
-                    }
-                }
-            )
-        }
-        currentJob = job
+        )
     }
 
     fun generateTitle(firstMsg: String) {
@@ -191,51 +191,10 @@ class ChatBridgeHandler(
             activity.webView.evaluateJavascript("loadMessages()", null)
         }
 
-        // Re-send from the edited message
+        // Re-send from the edited message using shared pipeline
         val apiMsgs = msgs.filter { it.imageUrl == null }
-            .map { ApiMessage(role = it.role, content = it.content) }
-        val data = SendMsgData(apiMsgs.map { JsMessage(it.role, it.content) })
-        val job = scope.launch {
-            val config = configManager.loadConfig()
-            val msgList = data.messages.toMutableList()
-            if (config.systemPrompt.isNotBlank() && msgList.none { it.role == "system" }) {
-                msgList.add(0, JsMessage(role = "system", content = config.systemPrompt))
-            }
-            val apiMsgsFinal = msgList.map { ApiMessage(role = it.role, content = it.content) }
-            val msgId = "msg_" + System.currentTimeMillis()
-            activity.runOnUiThread {
-                activity.webView.evaluateJavascript("onChatStreamStart('$msgId')", null)
-            }
-            val result = ApiClient.sendMessageStream(config, apiMsgsFinal) { batch, _ ->
-                activity.runOnUiThread {
-                    activity.webView.evaluateJavascript(
-                        "onChatStreamBatch('$msgId','${escapeJs(batch)}')", null
-                    )
-                }
-            }
-            result.fold(
-                onSuccess = {
-                    activity.runOnUiThread {
-                        activity.webView.evaluateJavascript("onChatStreamEnd('$msgId')", null)
-                    }
-                },
-                onFailure = { error ->
-                    if (error is kotlinx.coroutines.CancellationException) {
-                        activity.runOnUiThread {
-                            activity.webView.evaluateJavascript("onChatStreamCancel('$msgId')", null)
-                        }
-                        return@fold
-                    }
-                    val errMsg = error.message ?: "未知错误"
-                    activity.runOnUiThread {
-                        activity.webView.evaluateJavascript(
-                            "onChatStreamError('$msgId','${escapeJs(errMsg)}')", null
-                        )
-                    }
-                }
-            )
-        }
-        currentJob = job
+            .map { JsMessage(it.role, it.content) }
+        currentJob = runStream(apiMsgs)
     }
 
     // ── Helpers ──────────────────────────────────────

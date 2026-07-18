@@ -2,6 +2,8 @@ package com.tdc.aichat
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Handler
+import android.os.Looper
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.google.gson.Gson
@@ -9,6 +11,12 @@ import com.google.gson.reflect.TypeToken
 
 class ConversationManager(context: Context) {
     private val gson = Gson()
+    private val handler = Handler(Looper.getMainLooper())
+
+    // Per-conversation message cap to prevent SharedPreferences overflow
+    private val maxMessagesPerConv = 500
+    // Max total conversations to retain
+    private val maxConversations = 200
 
     // Encrypted storage for conversation data (v5.5+)
     private val securePrefs: SharedPreferences by lazy {
@@ -30,6 +38,7 @@ class ConversationManager(context: Context) {
 
     private var conversations: MutableList<Conversation> = mutableListOf()
     var currentId: String = ""
+    private var savePending = false
 
     init {
         load()
@@ -102,12 +111,32 @@ class ConversationManager(context: Context) {
     fun updateMessages(id: String, messages: List<ChatMessage>) {
         conversations.find { it.id == id }?.let {
             it.messages.clear()
-            it.messages.addAll(messages)
+            // Cap messages per conversation to prevent SharedPreferences overflow
+            val capped = if (messages.size > maxMessagesPerConv) {
+                messages.takeLast(maxMessagesPerConv)
+            } else {
+                messages
+            }
+            it.messages.addAll(capped)
         }
         save()
     }
 
+    /** Debounced save: writes happen at most every 300ms, coalescing rapid changes */
     fun save() {
+        if (savePending) return
+        savePending = true
+        handler.postDelayed({
+            savePending = false
+            val json = gson.toJson(conversations)
+            securePrefs.edit().putString("conv_list", json).apply()
+        }, 300)
+    }
+
+    /** Immediate (non-debounced) save — use before process death */
+    fun saveNow() {
+        handler.removeCallbacksAndMessages(null)
+        savePending = false
         val json = gson.toJson(conversations)
         securePrefs.edit().putString("conv_list", json).apply()
     }
@@ -133,8 +162,8 @@ class ConversationManager(context: Context) {
                 val type = object : TypeToken<MutableList<Conversation>>() {}.type
                 conversations = gson.fromJson(json, type) ?: mutableListOf()
                 // Prune oversized conversations to prevent SharedPreferences overflow
-                if (conversations.size > 200) {
-                    conversations = conversations.take(200).toMutableList()
+                if (conversations.size > maxConversations) {
+                    conversations = conversations.take(maxConversations).toMutableList()
                 }
             }
         } catch (e: Exception) {

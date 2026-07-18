@@ -7,7 +7,20 @@ function onChatStreamStart(msgId) {
   var wrap = document.createElement('div');
   wrap.className = 'msg-row assistant';
   wrap.id = msgId;
-  wrap.innerHTML = '<div class="msg-bubble"><span class="stream-cursor">|</span></div>';
+  var bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  // Text node for streaming content — avoids innerHTML thrashing
+  var textNode = document.createTextNode('');
+  bubble.appendChild(textNode);
+  var cursor = document.createElement('span');
+  cursor.className = 'stream-cursor';
+  cursor.textContent = '|';
+  bubble.appendChild(cursor);
+  // Attach metadata to the wrapper element
+  wrap._streamTextNode = textNode;
+  wrap._streamCursor = cursor;
+  wrap._streamBubble = bubble;
+  wrap.appendChild(bubble);
   document.getElementById('msgList').appendChild(wrap);
   setSendEnabled(false);
   showStopButton();
@@ -17,16 +30,21 @@ function onChatStreamStart(msgId) {
 function onChatStreamBatch(msgId, batch) {
   var wrap = document.getElementById(msgId);
   if (!wrap) return;
-  var bubble = wrap.querySelector('.msg-bubble');
+  var bubble = wrap._streamBubble || wrap.querySelector('.msg-bubble');
   if (!bubble) return;
 
   // Detect reasoning markers
   if (batch === '\u0000RSTART\u0000') {
-    // Start of reasoning block — create a collapsible thinking section
+    // Start of reasoning block — flush accumulated text then insert thinking section
+    flushStreamText(wrap);
     Nova.state._reasoningText = '';
-    // Insert thinking block before the cursor
     var thinkingHtml = '<div class="thinking-block"><details open><summary class="thinking-summary">💭 思考中...</summary><div class="thinking-content" id="thinking-' + msgId + '"></div></details></div>';
-    bubble.innerHTML = bubble.innerHTML.replace('<span class="stream-cursor">|</span>', thinkingHtml + '<span class="stream-cursor">|</span>');
+    var cursor = wrap._streamCursor;
+    if (cursor) {
+      cursor.insertAdjacentHTML('beforebegin', thinkingHtml);
+    } else {
+      bubble.insertAdjacentHTML('beforeend', thinkingHtml);
+    }
     return;
   }
 
@@ -53,14 +71,31 @@ function onChatStreamBatch(msgId, batch) {
     return;
   }
 
-  // Normal content streaming
-  var html = bubble.innerHTML.replace('<span class="stream-cursor">|</span>', '');
-  var div = document.createElement('div');
-  div.textContent = batch;
-  html += div.innerHTML;
-  html += '<span class="stream-cursor">|</span>';
-  bubble.innerHTML = html;
+  // Normal content streaming — append to text node (no innerHTML thrashing)
+  var textNode = wrap._streamTextNode;
+  if (textNode) {
+    textNode.textContent += batch;
+  } else {
+    // Fallback for legacy stream messages
+    var html = bubble.innerHTML.replace('<span class="stream-cursor">|</span>', '');
+    var div = document.createElement('div');
+    div.textContent = batch;
+    html += div.innerHTML;
+    html += '<span class="stream-cursor">|</span>';
+    bubble.innerHTML = html;
+  }
   scrollBottom();
+}
+
+/** Flush accumulated text node into permanent HTML before inserting thinking block */
+function flushStreamText(wrap) {
+  var textNode = wrap._streamTextNode;
+  if (textNode && textNode.textContent) {
+    var span = document.createElement('span');
+    span.textContent = textNode.textContent;
+    textNode.parentNode.replaceChild(span, textNode);
+    wrap._streamTextNode = null;
+  }
 }
 
 function onChatStreamEnd(msgId) {
@@ -71,7 +106,13 @@ function onChatStreamEnd(msgId) {
   if (!wrap) return;
   var bubble = wrap.querySelector('.msg-bubble');
   if (!bubble) return;
-  bubble.innerHTML = bubble.innerHTML.replace('<span class="stream-cursor">|</span>', '');
+
+  // Remove cursor
+  var cursor = wrap._streamCursor || bubble.querySelector('.stream-cursor');
+  if (cursor) cursor.remove();
+
+  // Flush any remaining text node content
+  flushStreamText(wrap);
 
   // Close reasoning block if still open
   var details = bubble.querySelector('details[open]');
@@ -83,10 +124,14 @@ function onChatStreamEnd(msgId) {
   native.updateMessages(JSON.stringify(Nova.state.messages));
   wrap.id = '';
 
+  // Clean up stream metadata
+  delete wrap._streamTextNode;
+  delete wrap._streamCursor;
+  delete wrap._streamBubble;
+
   // Re-render markdown on the final content, preserving thinking block
   var thinkingBlock = bubble.querySelector('.thinking-block');
   if (thinkingBlock) {
-    // Remove all siblings after thinking block, then append markdown-rendered content
     while (thinkingBlock.nextSibling) {
       thinkingBlock.nextSibling.remove();
     }
@@ -116,7 +161,13 @@ function onChatStreamError(msgId, err) {
   if (!wrap) return;
   var bubble = wrap.querySelector('.msg-bubble');
   if (!bubble) { wrap.remove(); return; }
-  bubble.innerHTML = bubble.innerHTML.replace('<span class="stream-cursor">|</span>', '');
+  // Remove cursor
+  var cursor = wrap._streamCursor || bubble.querySelector('.stream-cursor');
+  if (cursor) cursor.remove();
+  // Clean up stream metadata
+  delete wrap._streamTextNode;
+  delete wrap._streamCursor;
+  delete wrap._streamBubble;
   var retryHtml = '<div class="stream-retry">' +
     '<span class="stream-retry-msg">连接中断</span>' +
     '<button class="stream-retry-btn" onclick="event.stopPropagation();retryLastStream()" title="重试">' +

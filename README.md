@@ -119,6 +119,7 @@ TDCOKERMOR
 
 ## 版本历史
 
+- **v5.6** (2026-07-18)：性能优化（JS 流式渲染 textContent 替代 innerHTML 减少重排、图片选取智能跳过无损转换）、存储优化（ConversationManager 添加去抖动保存减少磁盘 I/O、单对话消息 500 条上限防止溢出）、架构精简（ChatBridgeHandler 提取 runStream 公共管道消除 sendMessage/editMessage 重复代码）、WebView 安全加固（SSL 错误拦截、混合内容阻断、文件访问锁定）、编译配置修正（移除无效 buildToolsVersion 37.0.0、compileSdk/targetSdk 升至 35、添加 lint 配置）
 - **v5.5** (2026-07-17)：安全增强（对话数据迁移至 EncryptedSharedPreferences 加密存储，旧数据自动迁移）、SettingsActivity API Key 脱敏完善（失焦自动重新脱敏）、ApiClient URL 构建健壮性修复（尾部斜杠容错）、非流式请求补全模型参数（temperature/topP/maxTokens）、ProGuard 规则修正（SendMsgData/JsMessage 跟随 v5.4 架构变更）、JS 端清理遗留死代码 + 流结束 Markdown 渲染重构（避免思维链文本混入消息内容）、send-btn 无障碍光标修正
 - **v5.4** (2026-07-17)：架构重构（JsBridge 拆分为 ChatBridgeHandler + ImageBridgeHandler）、ApiClient 流处理优化（BatchFlusher 提取+指数退避重试）、全文对话搜索（搜索消息内容）、DOM 增量更新（消息列表性能优化）、CSS 增强（表格样式/滚动条美化/暗色模式完善）、依赖版本升级
 - **v5.3** (2026-07-17)：修复 ProGuard 规则致命 Bug（release 构建数据模型被混淆导致崩溃）、参数输入校验（temperature/topP/maxTokens）、JsBridge Job 竞态修复、ConversationManager 健壮性增强、前端资源加载优化

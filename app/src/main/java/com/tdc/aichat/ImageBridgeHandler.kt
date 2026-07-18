@@ -101,13 +101,37 @@ class ImageBridgeHandler(
     fun onImagePicked(uri: Uri) {
         scope.launch {
             try {
-                val bytes = withContext(Dispatchers.IO) {
+                val (b64, mime, size) = withContext(Dispatchers.IO) {
                     val input: InputStream = activity.contentResolver.openInputStream(uri)
-                        ?: return@withContext null
-                    val bitmap = android.graphics.BitmapFactory.decodeStream(input)
+                        ?: return@withContext Triple("", "", 0)
+                    val rawBytes = input.readBytes()
                     input.close()
-                    if (bitmap == null) return@withContext null
+
+                    // Determine mime type from content resolver or fallback to JPEG
+                    val mimeType = activity.contentResolver.getType(uri) ?: "image/jpeg"
+
+                    // Try to decode bitmap bounds without full decode
+                    val opts = android.graphics.BitmapFactory.Options().apply {
+                        inJustDecodeBounds = true
+                    }
+                    android.graphics.BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size, opts)
+                    val imgW = opts.outWidth; val imgH = opts.outHeight
+
+                    // If image is already within limits and is JPEG (already compressed),
+                    // use raw bytes directly to avoid quality loss
                     val maxDim = 2048
+                    if (imgW > 0 && imgH > 0 && imgW <= maxDim && imgH <= maxDim
+                        && mimeType == "image/jpeg" && rawBytes.size <= 2 * 1024 * 1024) {
+                        return@withContext Triple(
+                            Base64.encodeToString(rawBytes, Base64.NO_WRAP),
+                            mimeType,
+                            rawBytes.size
+                        )
+                    }
+
+                    // Otherwise decode, scale, and re-encode
+                    val bitmap = android.graphics.BitmapFactory.decodeByteArray(rawBytes, 0, rawBytes.size)
+                        ?: return@withContext Triple("", "", 0)
                     val w = bitmap.width; val h = bitmap.height
                     val scaled = if (w > maxDim || h > maxDim) {
                         val r = minOf(maxDim.toFloat() / w, maxDim.toFloat() / h)
@@ -116,15 +140,15 @@ class ImageBridgeHandler(
                     val bos = ByteArrayOutputStream()
                     scaled.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, bos)
                     val data = bos.toByteArray(); bos.close()
-                    if (scaled !== bitmap) scaled.recycle(); bitmap.recycle()
-                    data
+                    if (scaled !== bitmap) scaled.recycle()
+                    bitmap.recycle()
+                    Triple(Base64.encodeToString(data, Base64.NO_WRAP), "image/jpeg", data.size)
                 }
-                if (bytes != null) {
-                    val b64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                if (b64.isNotEmpty()) {
                     activity.runOnUiThread {
                         val escapedB64 = ChatBridgeHandler.escapeJs(b64)
                         activity.webView.evaluateJavascript(
-                            "onImagePicked('$escapedB64','image/jpeg',${bytes.size})", null
+                            "onImagePicked('$escapedB64','$mime',$size)", null
                         )
                     }
                 }
