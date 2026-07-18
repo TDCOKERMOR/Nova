@@ -159,12 +159,30 @@ class ChatBridgeHandler(
     }
 
     fun shareTextAsFile(text: String, filename: String) {
-        val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-            type = "application/json"
-            putExtra(android.content.Intent.EXTRA_TEXT, text)
-            addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        try {
+            val dir = java.io.File(activity.cacheDir, "shared")
+            if (!dir.exists()) dir.mkdirs()
+            val file = java.io.File(dir, filename)
+            file.writeText(text)
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                activity,
+                "${activity.packageName}.fileprovider",
+                file
+            )
+            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "application/json"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            activity.startActivity(android.content.Intent.createChooser(intent, "分享对话"))
+        } catch (e: Exception) {
+            // Fallback: share as text if file creation fails
+            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(android.content.Intent.EXTRA_TEXT, text)
+            }
+            activity.startActivity(android.content.Intent.createChooser(intent, "分享对话"))
         }
-        activity.startActivity(android.content.Intent.createChooser(intent, "分享对话"))
     }
 
     // ── Key-pair editing ───────────────────────────

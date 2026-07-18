@@ -112,13 +112,6 @@ data class ImageData(
     val effectiveUrl: String? get() = url ?: image_url ?: image
 }
 
-/** Fallback image response formats for non-OpenAI APIs */
-data class AltImageResponse(
-    val images: List<ImageData>?,
-    val output: List<ImageData>?,
-    val url: String?
-)
-
 /** Async image job response (e.g. 幻梦API) */
 data class ImageJobResponse(
     val request_id: String?,

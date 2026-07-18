@@ -40,13 +40,22 @@ class ConversationManager(context: Context) {
     var currentId: String = ""
     private var savePending = false
 
+    // Cached sorted list, invalidated on mutation
+    private var sortedCache: List<Conversation>? = null
+    private fun invalidateCache() { sortedCache = null }
+
     init {
         load()
     }
 
-    fun list(): List<Conversation> = conversations.sortedWith(
-        compareByDescending<Conversation> { it.pinned }.thenByDescending { it.createdAt }
-    )
+    fun list(): List<Conversation> {
+        sortedCache?.let { return it }
+        val sorted = conversations.sortedWith(
+            compareByDescending<Conversation> { it.pinned }.thenByDescending { it.createdAt }
+        )
+        sortedCache = sorted
+        return sorted
+    }
 
     fun search(query: String): List<Conversation> {
         if (query.isBlank()) return list()
@@ -78,6 +87,7 @@ class ConversationManager(context: Context) {
         val conv = Conversation()
         conversations.add(0, conv)
         currentId = conv.id
+        invalidateCache()
         save()
         return conv
     }
@@ -87,17 +97,20 @@ class ConversationManager(context: Context) {
         if (currentId == id) {
             currentId = conversations.firstOrNull()?.id ?: ""
         }
+        invalidateCache()
         save()
     }
 
     fun updateTitle(id: String, title: String) {
         conversations.find { it.id == id }?.title = title
+        invalidateCache()
         save()
     }
 
     fun pinConversation(id: String) {
         val conv = conversations.find { it.id == id } ?: return
         conv.pinned = !conv.pinned
+        invalidateCache()
         save()
     }
 
@@ -105,6 +118,7 @@ class ConversationManager(context: Context) {
         conversations.find { it.id == id }?.let {
             it.title = newTitle.ifBlank { "未命名" }
         }
+        invalidateCache()
         save()
     }
 
@@ -119,6 +133,7 @@ class ConversationManager(context: Context) {
             }
             it.messages.addAll(capped)
         }
+        invalidateCache()
         save()
     }
 

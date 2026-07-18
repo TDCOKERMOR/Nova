@@ -11,8 +11,7 @@ function sendMsg() {
   if (m) {
     handleGenImage(m[1]);
     input.value = '';
-    input.style.height = 'auto';
-    input.style.height = '20px';
+    autoResizeInput();
     return;
   }
 
@@ -23,11 +22,7 @@ function sendMsg() {
 
   appendMessage('user', text);
   input.value = '';
-  setTimeout(function() {
-    input.value = '';
-    input.style.height = 'auto';
-    input.style.height = '20px';
-  }, 0);
+  autoResizeInput();
   setSendEnabled(false);
 
   var apiMsgs = Nova.state.messages

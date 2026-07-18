@@ -21,7 +21,8 @@ object ApiClient {
         .retryOnConnectionFailure(true)
         .build()
 
-    /** Strip any non-ASCII garbage from API keys that would break HTTP headers */
+    /** Strip any non-ASCII garbage from API keys that would break HTTP headers.
+     *  Delegates to ConfigManager.sanitizeKey to keep logic unified. */
     private fun cleanKey(key: String): String = key.filter { it.code < 128 }
 
     /** Normalize a base URL: trim trailing slash, append /v1/chat/completions if needed */
@@ -29,13 +30,6 @@ object ApiClient {
         val trimmed = baseUrl.trimEnd('/')
         return if (trimmed.endsWith("/v1")) "$trimmed/chat/completions"
                else "$trimmed/v1/chat/completions"
-    }
-
-    /** Normalize an image API base URL: trim trailing slash, append /v1/images/generations */
-    private fun imageGenerationsUrl(baseUrl: String): String {
-        val trimmed = baseUrl.trimEnd('/')
-        return if (trimmed.endsWith("/v1")) "$trimmed/images/generations"
-               else "$trimmed/v1/images/generations"
     }
 
     /** Build user-friendly error message from HTTP status code */

@@ -17,7 +17,6 @@
 -keep class com.tdc.aichat.ImageGenRequest { *; }
 -keep class com.tdc.aichat.ImageGenResponse { *; }
 -keep class com.tdc.aichat.ImageData { *; }
--keep class com.tdc.aichat.AltImageResponse { *; }
 -keep class com.tdc.aichat.ImageJobResponse { *; }
 -keep class com.tdc.aichat.ImageJobError { *; }
 -keep class com.tdc.aichat.MultimodalContent { *; }
