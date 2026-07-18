@@ -1,17 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
-    <!-- Default: block cleartext -->
+    <!-- Default: block cleartext traffic for all domains -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
-    <!-- Allow cleartext only for local development (localhost / 127.0.0.1 / 10.0.x.x) -->
+    <!-- Allow cleartext only for local development (localhost / 127.0.0.1 / 10.0.2.2) -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">localhost</domain>
         <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
     </domain-config>
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.0.0</domain>
+    <!-- Explicitly allow HTTPS for known API domains -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">api.openai.com</domain>
+        <domain includeSubdomains="true">api.anthropic.com</domain>
+        <domain includeSubdomains="true">api.github.com</domain>
+        <domain includeSubdomains="true">raw.githubusercontent.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
     </domain-config>
 </network-security-config>

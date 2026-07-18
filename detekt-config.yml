@@ -1,0 +1,177 @@
+build:
+  maxIssues: 100
+  exclude:
+    - 'build/**'
+    - '.*/resources/**'
+
+config:
+  validation: true
+  warningsAsErrors: false
+
+formatting:
+  MaximumLineLength:
+    maxLineLength: 120
+    disabled: false
+  TrailingWhitespace:
+    disabled: false
+  Indentation:
+    disabled: false
+    indentSize: 4
+    continuationIndentSize: 8
+  NoWildcardImports:
+    disabled: false
+  NoConsecutiveBlankLines:
+    disabled: false
+  TrailingComma:
+    disabled: false
+    alwaysOnCallSite: true
+    alwaysOnDeclarationSite: true
+
+naming:
+  MatchingDeclarationName:
+    disabled: false
+  FunctionNaming:
+    disabled: false
+  ClassNaming:
+    disabled: false
+  VariableNaming:
+    disabled: false
+  ParameterNaming:
+    disabled: false
+
+complexity:
+  ComplexMethod:
+    disabled: false
+    threshold: 15
+  LongMethod:
+    disabled: false
+    threshold: 60
+  LongParameterList:
+    disabled: false
+    threshold: 6
+  NestedBlockDepth:
+    disabled: false
+    threshold: 4
+  TooManyFunctions:
+    disabled: false
+    thresholdInFiles: 11
+    thresholdInClasses: 11
+    thresholdInInterfaces: 11
+    thresholdInObjects: 11
+    thresholdInEnums: 11
+
+exceptions:
+  TooGenericExceptionCaught:
+    disabled: false
+  TooGenericExceptionThrown:
+    disabled: false
+  SwallowingException:
+    disabled: false
+  ThrowingExceptionInMain:
+    disabled: false
+  ThrowingExceptionsWithoutMessageOrCause:
+    disabled: false
+  ExceptionRaisedInUnexpectedLocation:
+    disabled: false
+  NotImplementedDeclaration:
+    disabled: false
+  ReturnFromFinally:
+    disabled: false
+
+style:
+  MagicNumber:
+    disabled: false
+    ignoreNumbers: '-1,0,1,2,10,100,1000'
+    ignorePropertyDeclaration: true
+    ignoreLocalVariableDeclaration: true
+    ignoreConstantDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+  UnnecessaryParentheses:
+    disabled: false
+  UnusedImports:
+    disabled: false
+  UnusedPrivateMember:
+    disabled: false
+  UnusedVariable:
+    disabled: false
+  WildcardImport:
+    disabled: false
+  RedundantUnitReturnType:
+    disabled: false
+  ExplicitCollectionElementAccessMethod:
+    disabled: false
+  CollapsibleIfStatements:
+    disabled: false
+  LoopWithTooManyJumpStatements:
+    disabled: false
+  ForbiddenComment:
+    disabled: false
+    values: ['TODO:', 'FIXME:', 'STOPSHIP:']
+  FunctionOnlyReturningConstant:
+    disabled: false
+  NamedArguments:
+    disabled: false
+  DataClassContainsFunctions:
+    disabled: false
+  ObjectPropertyNameShadowing:
+    disabled: false
+  CompanionObjectPropertyNameShadowing:
+    disabled: false
+
+comments:
+  UndocumentedPublicClass:
+    disabled: true
+  UndocumentedPublicFunction:
+    disabled: true
+  UndocumentedPublicProperty:
+    disabled: true
+
+potential-bugs:
+  InvalidPackageDeclaration:
+    disabled: false
+  UnreachableCode:
+    disabled: false
+  SpreadOperator:
+    disabled: false
+  UnsafeCallOnNullableType:
+    disabled: false
+  ReturnCount:
+    disabled: false
+  UnusedPrivateProperty:
+    disabled: false
+  LateinitUsage:
+    disabled: false
+
+performance:
+  ArrayPrimitive:
+    disabled: false
+  ForEachOnRange:
+    disabled: false
+  MapGetWithNotNullAssertionOperator:
+    disabled: false
+  SizeInsteadOfIsEmpty:
+    disabled: false
+  MemberOnExtensionFunctionReturningUnit:
+    disabled: false
+  CompanionObjectInnerFunction:
+    disabled: false
+
+coroutines:
+  GlobalCoroutineUsage:
+    disabled: false
+  RedundantSuspendModifier:
+    disabled: false
+  SuspendFunWithCoroutineDispatcher:
+    disabled: false
+  CoroutineCreationDuringSuspension:
+    disabled: false
+  AsyncAwaitInsteadOfJoin:
+    disabled: false
+  RedundantJobStatusCheck:
+    disabled: false
+  UnnecessaryParentJob:
+    disabled: false
+
+library-entities:
+  PublicApiShouldBeDocumented:
+    disabled: true

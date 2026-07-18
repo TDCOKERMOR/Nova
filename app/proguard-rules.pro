@@ -31,6 +31,16 @@
 -keep class com.tdc.aichat.ChatBridgeHandler$SendMsgData { *; }
 -keep class com.tdc.aichat.ChatBridgeHandler$JsMessage { *; }
 
+# ── ImageBridgeHandler nested classes ───────
+-keep class com.tdc.aichat.ImageBridgeHandler$ImageGenData { *; }
+-keep class com.tdc.aichat.ImageBridgeHandler$ImageGenResult { *; }
+
+# ── ConfigManager nested classes ────────────
+-keep class com.tdc.aichat.ConfigManager$Config { *; }
+
+# ── ConversationManager nested classes ──────
+-keep class com.tdc.aichat.ConversationManager$ConversationItem { *; }
+
 # ── JsBridge @JavascriptInterface methods ───
 -keepclassmembers class com.tdc.aichat.JsBridge {
     @android.webkit.JavascriptInterface <methods>;
@@ -39,6 +49,7 @@
 # ── Gson ───────────────────────────────────
 -keepattributes Signature
 -keepattributes *Annotation*
+-keepattributes EnclosingMethod
 -dontwarn sun.misc.**
 -keep class com.google.gson.** { *; }
 -keep class com.google.gson.reflect.TypeToken { *; }
@@ -52,3 +63,54 @@
 # ── Coroutines ────────────────────────────
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+
+# ── AndroidX Security Crypto ───────────────
+-dontwarn androidx.security.crypto.**
+-keep class androidx.security.crypto.** { *; }
+
+# ── Kotlinx Coroutines ─────────────────────
+-keepnames class kotlinx.coroutines.** { *; }
+
+# ── Material Components ────────────────────
+-keep class com.google.android.material.** { *; }
+-dontwarn com.google.android.material.**
+
+# ── AndroidX Lifecycle ─────────────────────
+-keep class androidx.lifecycle.** { *; }
+-dontwarn androidx.lifecycle.**
+
+# ── AndroidX Activity ──────────────────────
+-keep class androidx.activity.** { *; }
+-dontwarn androidx.activity.**
+
+# ── Preserve generic type information for Gson ───
+-keepattributes Signature,RuntimeVisibleAnnotations,RuntimeInvisibleAnnotations
+
+# ── Keep Parcelable implementations ─────────
+-keep class * implements android.os.Parcelable {
+    public static final ** CREATOR;
+}
+
+# ── Keep Serializable classes ───────────────
+-keepclassmembers class * implements java.io.Serializable {
+    static final long serialVersionUID;
+    private static final java.io.ObjectStreamField[] serialPersistentFields;
+    private void writeObject(java.io.ObjectOutputStream);
+    private void readObject(java.io.ObjectInputStream);
+    java.lang.Object writeReplace();
+    java.lang.Object readResolve();
+}
+
+# ── Keep Enum values ───────────────────────
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# ── Keep annotation classes ────────────────
+-keep @interface *
+
+# ── Keep WebView JavaScript interface ──────
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}

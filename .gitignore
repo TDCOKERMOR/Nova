@@ -13,6 +13,9 @@ local.properties
 build/
 release/
 
+# Gradle Wrapper
+!gradle/wrapper/gradle-wrapper.jar
+
 # IDE
 /.idea
 /.settings
@@ -52,3 +55,37 @@ desktop.ini
 *.keystore
 *.p12
 *.pem
+
+# Test reports
+app/build/reports/
+app/build/test-results/
+
+# Detekt reports
+app/build/reports/detekt/
+
+# ktlint reports
+app/build/reports/ktlint/
+
+# Lint output
+app/build/reports/lint-results*.html
+app/build/reports/lint-results*.xml
+
+# Generated APK artifacts
+app/build/outputs/apk/
+app/build/outputs/bundle/
+
+# VS Code
+.vscode/
+
+# Temp files
+*.tmp
+*.swp
+*.bak
+~
+
+# Gradle cache files
+*.lock
+gradle-app.setting
+
+# JVM crash logs
+hs_err_pid*

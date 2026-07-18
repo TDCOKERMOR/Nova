@@ -1,4 +1,125 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Nova</string>
+    <string name="new_conversation">新对话</string>
+    <string name="conversations">对话列表</string>
+    <string name="settings">设置</string>
+    <string name="send">发送</string>
+    <string name="stop">停止</string>
+    <string name="retry">重试</string>
+    <string name="copy">复制</string>
+    <string name="edit">编辑</string>
+    <string name="delete">删除</string>
+    <string name="pin">置顶</string>
+    <string name="unpin">取消置顶</string>
+    <string name="rename">重命名</string>
+    <string name="search">搜索对话</string>
+    <string name="search_placeholder">搜索消息</string>
+    <string name="no_conversations">暂无对话，点击新建开始</string>
+    <string name="loading">加载中…</string>
+    <string name="error_network">网络错误，请检查设置</string>
+    <string name="error_api">API 调用失败：%1$s</string>
+    <string name="error_unknown">未知错误</string>
+    <string name="api_key_required">请先在设置中配置 API Key</string>
+    <string name="api_url_required">请先在设置中配置 API URL</string>
+    <string name="model_required">请先在设置中配置模型</string>
+    <string name="message_placeholder">输入35消息...</string>
+    <string name="thinking">思考中...</string>
+    <string name="streaming">流式输出中...</string>
+    <string name="image_generating">正在生成图片...</string>
+    <string name="image_generated">图片生成成功</string>
+    <string name="copy_success">已复制到剪贴板</string>
+    <string name="copy_failed">复制失败</string>
+    <string name="conversation_deleted">对话已删除</string>
+    <string name="conversation_pinned">对话已置顶</string>
+    <string name="conversation_unpinned">对话已取消置顶</string>
+    <string name="conversation_renamed">对话重命名成功</string>
+    <string name="settings_saved">设置保存成功</string>
+    <string name="settings_reset">设置已重置</string>
+
+    <!-- Settings -->
+    <string name="settings_chat_config">对话 API 配置</string>
+    <string name="settings_vision_config">视觉 API 配置</string>
+    <string name="settings_image_config">生成图片 API 配置</string>
+    <string name="settings_system_prompt">系统提示词</string>
+    <string name="settings_general">通用设置</string>
+    <string name="settings_about">关于</string>
+
+    <string name="chat_api_url">对话 API URL</string>
+    <string name="chat_api_url_hint">例： https://api.openai.com/v1</string>
+    <string name="chat_api_key">对话 API Key</string>
+    <string name="chat_api_key_hint">请输入您的 API Key</string>
+    <string name="chat_model">对话模型</string>
+    <string name="chat_model_hint">例： gpt-4, gpt-3.5-turbo</string>
+    <string name="temperature">温度</string>
+    <string name="top_p">Top-P</string>
+    <string name="max_tokens">最大 Token数</string>
+
+    <string name="vision_api_url">视觉 API URL</string>
+    <string name="vision_api_url_hint">默认使用对话 API URL</string>
+    <string name="vision_api_key">视觉 API Key</string>
+    <string name="vision_api_key_hint">默认使用对话 API Key</string>
+    <string name="vision_model">视觉模型</string>
+    <string name="vision_model_hint">例： gpt-4o, gpt-4-vision</string>
+
+    <string name="image_api_url">生成图片 API URL</string>
+    <string name="image_api_url_hint">默认使用对话 API URL</string>
+    <string name="image_api_key">生成图片 API Key</string>
+    <string name="image_api_key_hint">默认使用对话 API Key</string>
+    <string name="image_model">生成图片模型</string>
+    <string name="image_model_hint">例： dall-e-3, dall-e-2</string>
+
+    <string name="system_prompt">系统提示词</string>
+    <string name="system_prompt_hint">例： You are a helpful assistant.</string>
+    <string name="system_prompt_default">You are a helpful, creative, and friendly AI assistant. You communicate in a natural, conversational way. You can help with coding, writing, analysis, and general questions.</string>
+
+    <string name="language">语言</string>
+    <string name="theme">主题</string>
+    <string name="theme_system">跟随系统</string>
+    <string name="theme_light">明亮模式</string>
+    <string name="theme_dark">暗黑模式</string>
+    <string name="auto_scroll">自动滚动</string>
+    <string name="show_timestamps">显示时间</string>
+    <string name="markdown_rendering">Markdown 渲染</string>
+    <string name="code_highlighting">代码高亮</string>
+
+    <string name="about_title">Nova AI Chat</string>
+    <string name="about_version">版本 %1$s</string>
+    <string name="about_description">一款基于 WebView 的 AI 聊天应用，支持开源对话 API、图片生成、视觉识别</string>
+    <string name="about_github">GitHub</string>
+    <string name="about_license">开源协议</string>
+    <string name="about_privacy">隐私政策</string>
+
+    <string name="prompt_optimize_title">提示词优化</string>
+    <string name="prompt_optimize_hint">请输入要优化的提示词</string>
+    <string name="prompt_optimize_placeholder">例：帮我写一个 Python 脚本...</string>
+    <string name="prompt_optimize_result">优化结果</string>
+    <string name="prompt_optimize_apply">应用</string>
+    <string name="prompt_optimize_cancel">取消</string>
+
+    <string name="confirm_delete_title">确认删除</string>
+    <string name="confirm_delete_message">确定要删除这个对话吗？</string>
+    <string name="confirm_delete_conversation">确定要删除此对话吗？</string>
+    <string name="cancel">取消</string>
+    <string name="confirm">确定</string>
+
+    <string name="image_prompt_label">图片提示词</string>
+    <string name="image_size">图片尺寸</string>
+    <string name="image_quality">图片质量</string>
+    <string name="image_style">图片风格</string>
+
+    <string name="accessibility_send_button">发送消息</string>
+    <string name="accessibility_stop_button">停止生成</string>
+    <string name="accessibility_menu_button">菜单</string>
+    <string name="accessibility_search">搜索</string>
+    <string name="accessibility_new_chat">新建对话</string>
+    <string name="accessibility_settings">设置</string>
+    <string name="accessibility_message_input">消息输入框</string>
+    <string name="accessibility_conversation_list">对话列表</string>
+    <string name="accessibility_message_bubble">消息气泡</string>
+    <string name="accessibility_user_message">用户消息</string>
+    <string name="accessibility_ai_message">AI 回复</string>
+    <string name="accessibility_image_message">图片消息</string>
+    <string name="accessibility_settings_button">设置</string>
+    <string name="accessibility_close_button">关闭</string>
 </resources>

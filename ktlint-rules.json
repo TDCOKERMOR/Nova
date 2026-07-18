@@ -1,0 +1,16 @@
+{
+  "rules": {
+    "indent": true,
+    "no-wildcard-imports": true,
+    "no-consecutive-blank-lines": true,
+    "import-ordering": true,
+    "trailing-comma": true,
+    "max-line-length": {
+      "maxLineLength": 120
+    },
+    "no-trailing-whitespace": true,
+    "no-unused-imports": true,
+    "no-unused-variables": true,
+    "no-empty-blocks": true
+  }
+}

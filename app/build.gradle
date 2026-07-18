@@ -1,6 +1,9 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jlleitschuh.gradle.ktlint'
+    id 'io.gitlab.arturbosch.detekt'
 }
 
 android {
@@ -11,13 +14,19 @@ android {
         applicationId "com.tdc.aichat"
         minSdk 26
         targetSdk 35
-        versionCode 12
-        versionName "5.7"
+        versionCode 13
+        versionName "5.8"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary true
+        }
     }
 
     lint {
         checkReleaseBuilds false
         abortOnError false
+        baseline file("lint-baseline.xml")
     }
 
     buildTypes {
@@ -25,6 +34,10 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        debug {
+            minifyEnabled false
+            debuggable true
         }
     }
 
@@ -35,10 +48,53 @@ android {
 
     kotlinOptions {
         jvmTarget = '17'
+        freeCompilerArgs = [
+            "-Xopt-in=kotlin.RequiresOptIn",
+            "-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi"
+        ]
     }
 
     buildFeatures {
         viewBinding true
+        buildConfig true
+    }
+
+    packagingOptions {
+        resources {
+            excludes += [
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/license.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/notice.txt"
+            ]
+        }
+    }
+}
+
+ktlint {
+    version = "1.0.1"
+    android = true
+    configFile = file("../ktlint-rules.json")
+    reporters {
+        reporter('plain')
+        reporter('checkstyle', file("build/reports/ktlint/ktlint-checkstyle.xml"))
+    }
+}
+
+detekt {
+    toolVersion = "1.23.6"
+    config = files("../detekt-config.yml")
+    buildUponDefaultConfig = true
+    reports {
+        html.enabled = true
+        html.destination = file("build/reports/detekt/detekt.html")
+        xml.enabled = true
+        xml.destination = file("build/reports/detekt/detekt.xml")
+        txt.enabled = true
+        txt.destination = file("build/reports/detekt/detekt.txt")
     }
 }
 
@@ -54,7 +110,18 @@ dependencies {
     // Gson for JSON
     implementation 'com.google.code.gson:gson:2.11.0'
     // Coroutines
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.0'
     // Encrypted SharedPreferences for secure API key storage
     implementation 'androidx.security:security-crypto:1.1.0-alpha07'
+
+    // Testing
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.mockito:mockito-core:5.14.2'
+    testImplementation 'org.mockito.kotlin:mockito-kotlin:5.1.0'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 }
+
+
